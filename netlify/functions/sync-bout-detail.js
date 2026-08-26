@@ -186,7 +186,7 @@ export default async (req, context) => {
       for (const m of matched) {
         const performanceId = perfByFighter.get(m.fighter.id);
         const totalRow = (detail.boutStats || []).find((s) => s.fighterSlug === m.raw.fighterSlug);
-        if (totalRow) statRows.push(buildStatRow(performanceId, null, totalRow));
+        if (totalRow) statRows.push(buildStatRow(performanceId, 0, totalRow));
 
         const roundRows = (detail.roundStats || []).filter((s) => s.fighterSlug === m.raw.fighterSlug);
         for (const r of roundRows) {
