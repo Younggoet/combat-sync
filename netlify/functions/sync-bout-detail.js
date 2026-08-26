@@ -195,8 +195,7 @@ export default async (req, context) => {
       }
 
       if (statRows.length > 0) {
-        const { error: statsErr } = await supabase.from('mma_stats').insert(statRows);
-        if (statsErr) {
+        const { error: statsErr } = await supabase.from('mma_stats').upsert(statRows, { onConflict: 'performance_id,round_number' });        if (statsErr) {
           result.status = 'error';
           result.error = `mma_stats: ${statsErr.message}`;
           summary.results.push(result);
