@@ -47,10 +47,20 @@ export default async (req, context) => {
   try {
     const searchResults = await citoFetch(`/ufc/search?q=${encodeURIComponent(name)}`);
 
-    // Normalize: Cito's search response shape may vary; try common shapes
+    // Cito wraps results as either a bare array, or nested under
+    // .fighters, .data.fighters, .results, or .data — confirmed via a
+    // real response that the actual shape is { fighters: [...] }.
     const matches = Array.isArray(searchResults)
       ? searchResults
-      : (searchResults.results || searchResults.data || []);
+      : Array.isArray(searchResults.fighters)
+        ? searchResults.fighters
+        : Array.isArray(searchResults.data)
+          ? searchResults.data
+          : Array.isArray(searchResults.data?.fighters)
+            ? searchResults.data.fighters
+            : Array.isArray(searchResults.results)
+              ? searchResults.results
+              : [];
 
     if (matches.length === 0) {
       return new Response(
