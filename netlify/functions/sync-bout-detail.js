@@ -266,13 +266,23 @@ function normalize(name) {
 }
 
 async function fetchBoutDetail(apiKey, boutId) {
-  const res = await fetch(`${CITO_BASE}/ufc/bouts/${boutId}`, {
+  const url = `${CITO_BASE}/ufc/bouts/${boutId}`;
+  console.log('CITO REQUEST URL:', url);
+
+  const res = await fetch(url, {
     headers: { 'x-api-key': apiKey },
   });
+
+  console.log('CITO RESPONSE STATUS:', res.status);
+  console.log('CITO RESPONSE HEADERS:', JSON.stringify([...res.headers.entries()]));
+
+  const rawBody = await res.text();
+  console.log('CITO RESPONSE BODY:', rawBody);
+
   if (!res.ok) {
     throw new Error(`Cito ${res.status} ${res.statusText}`);
   }
-  const body = await res.json();
+  const body = JSON.parse(rawBody);
   return body.data ?? body;
 }
 
