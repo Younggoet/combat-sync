@@ -28,7 +28,7 @@ import { createClient } from '@supabase/supabase-js';
 const CITO_BASE = 'https://api.citoapi.com/api/v1';
 
 export default async (req, context) => {
-    return new Response(JSON.stringify({ test: "HELLO_FROM_NEW_CODE_12345" }), { status: 200 });  const url = new URL(req.url);
+      const url = new URL(req.url);
   const dryRun = url.searchParams.get('dryRun') === 'true';
 
   const singleId = url.searchParams.get('boutId');
