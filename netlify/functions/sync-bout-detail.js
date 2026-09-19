@@ -267,8 +267,7 @@ function normalize(name) {
 
 async function fetchBoutDetail(apiKey, boutId) {
   const url = `${CITO_BASE}/ufc/bouts/${boutId}`;
-  console.log('CITO REQUEST URL:', url);
-
+  console.log('CITO REQUEST URL:', url);     console.log('KEY BEING SENT:', JSON.stringify(apiKey));
   const res = await fetch(url, {
     headers: { 'x-api-key': apiKey },
   });
