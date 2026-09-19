@@ -44,7 +44,7 @@ export default async (req, context) => {
   }
 
   const CITO_API_KEY = process.env.CITO_API_KEY;
-  const SUPABASE_URL = process.env.SUPABASE_URL;
+        console.log('KEY LENGTH:', CITO_API_KEY ? CITO_API_KEY.length : 'MISSING', 'FIRST5:', CITO_API_KEY ? CITO_API_KEY.slice(0,5) : '');  const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!CITO_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
