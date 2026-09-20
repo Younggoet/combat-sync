@@ -22,7 +22,7 @@ export default async (req, context) => {
     const detail = JSON.parse(body);
   const fightersRaw = detail.data?.fighters || detail.fighters || [];
 
-  const { createClient } = await import('@supabase/supabase-js');
+  
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   function normalize(name) {
