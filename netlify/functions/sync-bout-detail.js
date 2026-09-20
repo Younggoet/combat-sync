@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 export default async (req, context) => {
   const url = new URL(req.url);
   const boutId = url.searchParams.get('boutId');
