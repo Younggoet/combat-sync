@@ -1,17 +1,21 @@
-import { createClient } from '@supabase/supabase-js';
-export default async (req, context) => {
-  const url = new URL(req.url);
-  const boutId = url.searchParams.get('boutId');
+const { createClient } = require('@supabase/supabase-js');
+
+const CITO_BASE = 'https://api.citoapi.com/api/v1';
+
+exports.handler = async (event, context) => {
+  const params = event.queryStringParameters || {};
+  const boutId = params.boutId;
 
   if (!boutId) {
-    return new Response(JSON.stringify({ error: 'Provide ?boutId=...' }), {
-      status: 400,
+    return {
+      statusCode: 400,
       headers: { 'Content-Type': 'application/json' },
-    });
+      body: JSON.stringify({ error: 'Provide ?boutId=...' }),
+    };
   }
 
   const apiKey = process.env.CITO_API_KEY;
-  const citoUrl = `https://api.citoapi.com/api/v1/ufc/bouts/${boutId}`;
+  const citoUrl = `${CITO_BASE}/ufc/bouts/${boutId}`;
 
   const res = await fetch(citoUrl, {
     headers: { 'x-api-key': apiKey },
@@ -19,10 +23,17 @@ export default async (req, context) => {
 
   const body = await res.text();
 
-    const detail = JSON.parse(body);
+  if (!res.ok) {
+    return {
+      statusCode: res.status,
+      headers: { 'Content-Type': 'application/json' },
+      body: body,
+    };
+  }
+
+  const detail = JSON.parse(body);
   const fightersRaw = detail.data?.fighters || detail.fighters || [];
 
-  
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   function normalize(name) {
@@ -46,7 +57,9 @@ export default async (req, context) => {
     fighter: byName.get(normalize(f.fighterName)),
   }));
 
-  return new Response(JSON.stringify({ detail, matched }, null, 2), {
-    status: 200,
+  return {
+    statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-  });
+    body: JSON.stringify({ detail, matched }, null, 2),
+  };
+};
