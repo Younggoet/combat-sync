@@ -57,9 +57,73 @@ exports.handler = async (event, context) => {
     fighter: byName.get(normalize(f.fighterName)),
   }));
 
+    const winnerSlug = detail.data?.winnerFighterSlug || detail.winnerFighterSlug || null;
+  const winnerMatch = matched.find((m) => m.raw.fighterSlug === winnerSlug);
+
+  const [a, b] = matched;
+  if (!a?.fighter || !b?.fighter) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'skipped', reason: 'fighter(s) not in your roster', matched }, null, 2),
+    };
+  }
+
+  const eventName = detail.data?.event?.title || detail.event?.title || null;
+  const eventDate = detail.data?.event?.eventDate || detail.event?.eventDate || null;
+
+  const { data: existingBout } = await supabase
+    .from('bouts')
+    .select('id')
+    .eq('event_name', eventName)
+    .eq('fighter_a', a.fighter.id)
+    .eq('fighter_b', b.fighter.id)
+    .maybeSingle();
+
+  if (existingBout) {
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'already_exists', boutRowId: existingBout.id }, null, 2),
+    };
+  }
+
+  const boutRow = {
+    sport_id: 'mma',
+    org_id: null,
+    event_name: eventName,
+    bout_date: eventDate,
+    status: detail.data?.status || detail.status || 'completed',
+    weight_class: detail.data?.weightClass || detail.weightClass || null,
+    scheduled_rounds: null,
+    is_title_fight: detail.data?.titleBout || detail.titleBout || false,
+    fighter_a: a.fighter.id,
+    fighter_b: b.fighter.id,
+    winner_id: winnerMatch ? winnerMatch.fighter.id : null,
+    method: detail.data?.method || detail.method || null,
+    end_round: detail.data?.resultRound || detail.resultRound || null,
+    end_time: detail.data?.resultTime || detail.resultTime || null,
+    fotn: false,
+    data_source: 'cito',
+  };
+
+  const { data: insertedBout, error: boutErr } = await supabase
+    .from('bouts')
+    .insert(boutRow)
+    .select('id')
+    .single();
+
+  if (boutErr) {
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'error', error: boutErr.message }, null, 2),
+    };
+  }
+
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ detail, matched }, null, 2),
+    body: JSON.stringify({ status: 'inserted', boutRowId: insertedBout.id, matched }, null, 2),
   };
 };
