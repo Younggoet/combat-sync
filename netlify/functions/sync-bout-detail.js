@@ -18,8 +18,34 @@ export default async (req, context) => {
 
   const body = await res.text();
 
-  return new Response(body, {
-    status: res.status,
+    const detail = JSON.parse(body);
+  const fightersRaw = detail.data?.fighters || detail.fighters || [];
+
+  const { createClient } = await import('@supabase/supabase-js');
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+  function normalize(name) {
+    return (name || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  const { data: existingFighters } = await supabase
+    .from('fighters')
+    .select('id, full_name');
+
+  const byName = new Map();
+  for (const f of (existingFighters || [])) {
+    byName.set(normalize(f.full_name), f);
+  }
+
+  const matched = fightersRaw.map((f) => ({
+    raw: f,
+    fighter: byName.get(normalize(f.fighterName)),
+  }));
+
+  return new Response(JSON.stringify({ detail, matched }, null, 2), {
+    status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
-};
