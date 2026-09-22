@@ -43,10 +43,11 @@ exports.handler = async (event, context) => {
       .replace(/[^a-z0-9]/g, '');
   }
 
-  const { data: existingFighters } = await supabase
-    .from('fighters')
-    .select('id, full_name');
+  const { data: existingFighters, error: fightersError } = await supabase
+  .from('fighters')
+  .select('id, full_name');
 
+console.log('FIGHTERS ERROR:', fightersError);
     const byName = new Map();
   console.log('FIGHTERS COUNT:', (existingFighters || []).length);
   console.log('SAMPLE NAMES:', (existingFighters || []).slice(0, 5).map(f => f.full_name));
