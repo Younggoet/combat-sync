@@ -47,10 +47,10 @@ exports.handler = async (event, context) => {
   .from('fighters')
   .select('id, full_name');
 
-console.log('FIGHTERS ERROR:', fightersError);
+
     const byName = new Map();
-  console.log('FIGHTERS COUNT:', (existingFighters || []).length);
-  console.log('SAMPLE NAMES:', (existingFighters || []).slice(0, 5).map(f => f.full_name));
+  
+  
   for (const f of (existingFighters || [])) {
     byName.set(normalize(f.full_name), f);
   }
