@@ -14,11 +14,63 @@
  * bout's event date here. Flagged clearly so it's a one-line swap
  * later, not a rebuild.
  *
- * Requires: netlify/functions/scoring.js sitting next to this file.
+ * NOTE: the scoring logic normally lives in scoring.js, but it's
+ * inlined directly here instead of require('./scoring') — Netlify's
+ * function bundler was packaging scoring.js as its own separate
+ * function rather than including it inside this one, causing this
+ * function to crash on cold start with "module not found". Inlining
+ * avoids that entirely. If scoring.js needs updating later, update
+ * BOTH this copy and the standalone file, or move to a proper
+ * shared-utils pattern (e.g. a netlify/functions/lib/ folder,
+ * which some bundlers handle differently than top-level files).
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { calculateFightPoints } = require('./scoring');
+
+// ---- Point values (Standard mode) ----
+const POINTS = {
+  SIG_STRIKE_LANDED: 0.1,
+  TAKEDOWN_LANDED: 2,
+  KNOCKDOWN: 8,
+  CONTROL_TIME_PER_MIN: 1,
+  SUBMISSION_ATTEMPT: 1,
+  REVERSAL: 6,
+  TAKEDOWN_DEFENDED: 0.5,
+};
+
+function calculateFightPoints(fighterStats, opponentStats) {
+  const sigStrikesLanded = Number(fighterStats.sig_strikes_landed) || 0;
+  const takedownsLanded = Number(fighterStats.takedowns_landed) || 0;
+  const knockdowns = Number(fighterStats.knockdowns) || 0;
+  const controlMinutes = (Number(fighterStats.control_time_seconds) || 0) / 60;
+  const submissionAttempts = Number(fighterStats.submission_attempts) || 0;
+  const reversals = Number(fighterStats.reversals) || 0;
+
+  const opponentAttempted = opponentStats
+    ? Number(opponentStats.takedowns_attempted) || 0
+    : 0;
+  const opponentLanded = opponentStats
+    ? Number(opponentStats.takedowns_landed) || 0
+    : 0;
+  const takedownsDefended = Math.max(0, opponentAttempted - opponentLanded);
+
+  const breakdown = {
+    sigStrikes: sigStrikesLanded * POINTS.SIG_STRIKE_LANDED,
+    takedowns: takedownsLanded * POINTS.TAKEDOWN_LANDED,
+    knockdowns: knockdowns * POINTS.KNOCKDOWN,
+    controlTime: controlMinutes * POINTS.CONTROL_TIME_PER_MIN,
+    submissionAttempts: submissionAttempts * POINTS.SUBMISSION_ATTEMPT,
+    reversals: reversals * POINTS.REVERSAL,
+    takedownDefense: takedownsDefended * POINTS.TAKEDOWN_DEFENDED,
+  };
+
+  const total = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
+
+  return {
+    total: Math.round(total * 100) / 100,
+    breakdown,
+  };
+}
 
 exports.handler = async (event, context) => {
   const params = event.queryStringParameters || {};
@@ -37,7 +89,6 @@ exports.handler = async (event, context) => {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // 1. Get this team's ACTIVE roster slots only
   const { data: activeRoster, error: rosterError } = await supabase
     .from('rosters')
     .select('id, weight_class, fighter_id')
@@ -62,7 +113,6 @@ exports.handler = async (event, context) => {
 
   const byWeightClass = [];
 
-  // 2. For each active fighter, find every bout they have stats for
   for (const slot of activeRoster) {
     if (!slot.fighter_id) {
       byWeightClass.push({
@@ -74,7 +124,6 @@ exports.handler = async (event, context) => {
       continue;
     }
 
-    // Find this fighter's performances (one row per bout they were in)
     const { data: performances, error: perfError } = await supabase
       .from('performances')
       .select('id, bout_id, fighter_id')
@@ -94,7 +143,6 @@ exports.handler = async (event, context) => {
     const fightBreakdown = [];
 
     for (const perf of performances) {
-      // This fighter's whole-fight stats (round_number = 0)
       const { data: ownStats } = await supabase
         .from('mma_stats')
         .select('*')
@@ -104,7 +152,6 @@ exports.handler = async (event, context) => {
 
       if (!ownStats) continue;
 
-      // Find the OPPONENT's performance in the same bout
       const { data: opponentPerf } = await supabase
         .from('performances')
         .select('id')
