@@ -21,14 +21,18 @@
  * validation and racing each other — if that happens, the loser's insert
  * fails with a 409 instead of corrupting the room.
  *
- * NOT done here (by design, not oversight): when a draft room finishes
- * (status -> 'complete'), nothing here copies its draft_picks rows into
- * the standing `rosters` table. That finalize-the-room step still needs
- * to be designed and built — flagging it rather than guessing at it.
+ * The moment this pick is the room's very last one (every team's 10
+ * active + 40 cage side slots are now full), this function also finalizes
+ * the room: it copies every pick into the standing `rosters` table via
+ * lib/finalize-draft-room.js. See that file for the design (confirmed
+ * with William Oct 3 2026) — short version: a real draft finishing IS the
+ * league starting, so this happens automatically and immediately, not as
+ * a separate manual step.
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { validatePick } = require('./lib/draft-engine');
+const { validatePick, TOTAL_SLOTS_PER_TEAM } = require('./lib/draft-engine');
+const { finalizeDraftRoom } = require('./lib/finalize-draft-room');
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
@@ -172,9 +176,29 @@ exports.handler = async (event, context) => {
     .update({ current_pick_number: result.pickNumber + 1 })
     .eq('id', draftRoomId);
 
+  // result.phase is just this PICK's phase (active/cageside) — the room
+  // itself is only truly done once every team has filled all 50 slots.
+  // That's pick number TOTAL_SLOTS_PER_TEAM * teamCount, not whatever
+  // getPhase('complete') would report on a pick that doesn't exist yet.
+  const isRoomsLastPick = result.pickNumber === TOTAL_SLOTS_PER_TEAM * room.team_order.length;
+
+  let finalize = null;
+  if (isRoomsLastPick) {
+    const { data: allPicks, error: allPicksError } = await supabase
+      .from('draft_picks')
+      .select('team_id, division, fighter_id, slot_type, role, role_slot_number')
+      .eq('draft_room_id', draftRoomId);
+
+    if (allPicksError) {
+      finalize = { error: `Could not load picks to finalize: ${allPicksError.message}` };
+    } else {
+      finalize = await finalizeDraftRoom(supabase, draftRoomId, room.team_order, allPicks || []);
+    }
+  }
+
   return {
     statusCode: 201,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pick: inserted, next: nextStatus }, null, 2),
+    body: JSON.stringify({ pick: inserted, next: nextStatus, finalize }, null, 2),
   };
 };
