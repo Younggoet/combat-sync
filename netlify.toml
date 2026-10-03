@@ -3,3 +3,9 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# Pulls RSS feeds, persists new articles, and name-matches them against
+# the fighters table — see netlify/functions/news-sync.js. get-news.js
+# just reads what this leaves in Supabase; it no longer fetches live.
+[functions."news-sync"]
+  schedule = "*/30 * * * *"

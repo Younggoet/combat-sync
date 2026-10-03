@@ -1,94 +1,67 @@
 // netlify/functions/get-news.js
 //
-// Fetches Sherdog's MMA news RSS feed server-side and returns clean JSON.
-// No database involved — this is a live fetch-and-parse on every request,
-// matching the "RSS aggregator, no DB" design for the news module.
+// GET /.netlify/functions/get-news
 //
-// Only Sherdog is wired up for now — it's the one feed confirmed reliable.
-// Other sources (MMA Fighting, MMA Junkie, etc.) can be added to the
-// FEEDS array below once their real RSS URLs are verified working.
+// Returns stored news articles from Supabase, newest first, each tagged
+// with which of our fighters (if any) it mentions.
 //
-// USAGE:
-//   GET https://combat-sync.netlify.app/.netlify/functions/get-news
+// REWRITTEN Oct 3 2026 — this used to fetch every RSS feed live on every
+// request and throw the results back without storing anything. That's
+// now news-sync.js's job, running on a schedule (see netlify.toml). This
+// function just reads what news-sync.js already persisted into
+// news_items / news_item_fighters — fast, and able to tag fighters,
+// which nothing could do against a live, un-stored RSS fetch.
+//
+// Response shape is unchanged from before ({ items: [...] }, each with
+// title/link/description/pubDate/source/sport) so combat-app's
+// news.html keeps working as-is. Each item now ALSO carries a
+// `fighters` array ([{ id, name }]) — additive, nothing existing breaks
+// if a consumer ignores it.
 
-const FEEDS = [
-  { name: "Sherdog", sport: "MMA", url: "https://www.sherdog.com/rss/news.xml" },
-  { name: "USA Wrestling", sport: "Wrestling", url: "https://www.themat.com/rss.xml" },
-  { name: "BJJEE", sport: "BJJ", url: "https://www.bjjee.com/feed" },
-  { name: "Boxing News 24", sport: "Boxing", url: "https://www.boxingnews24.com/feed" },
-  // Unverified — WordPress site, likely works, but the raw feed
-  // couldn't be confirmed directly. If this stops showing articles,
-  // swap in a verified kickboxing/Glory/K-1 source instead.
-  { name: "FightBook MMA", sport: "Kickboxing", url: "https://www.fightbookmma.com/feed" },
-];
+const { createClient } = require('@supabase/supabase-js');
 
 const MAX_ITEMS = 40;
-const MAX_PER_FEED = 10;
 
-function stripCdata(str) {
-  if (!str) return "";
-  return str.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, "$1").trim();
-}
-
-function stripHtml(str) {
-  if (!str) return "";
-  return str.replace(/<[^>]*>/g, "").trim();
-}
-
-function extractTag(block, tag) {
-  const match = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
-  return match ? stripCdata(match[1]) : "";
-}
-
-function parseRssItems(xml, sourceName, sport) {
-  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)];
-  return items.map((m) => {
-    const block = m[1];
-    return {
-      title: extractTag(block, "title"),
-      link: extractTag(block, "link"),
-      description: stripHtml(extractTag(block, "description")),
-      pubDate: extractTag(block, "pubDate"),
-      source: sourceName,
-      sport: sport,
-    };
-  });
-}
-
-export default async () => {
+exports.handler = async () => {
   const corsHeaders = {
-    "content-type": "application/json",
-    "access-control-allow-origin": "*",
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
   };
 
-  try {
-    const allItems = [];
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 
-    for (const feed of FEEDS) {
-      try {
-        const res = await fetch(feed.url);
-        if (!res.ok) continue;
-        const xml = await res.text();
-        const parsed = parseRssItems(xml, feed.name, feed.sport);
-        // Cap per feed so high-frequency sources (like MMA) don't crowd
-        // out lower-volume ones (wrestling, BJJ, boxing) once merged.
-        allItems.push(...parsed.slice(0, MAX_PER_FEED));
-      } catch (e) {
-        // Skip a feed that fails rather than failing the whole request
-        continue;
-      }
-    }
+  const { data: rows, error } = await supabase
+    .from('news_items')
+    .select('title, link, description, pub_date, source, sport, news_item_fighters(fighter_id, matched_name, fighters(id, full_name))')
+    .order('pub_date', { ascending: false })
+    .limit(MAX_ITEMS);
 
-    allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-    return new Response(
-      JSON.stringify({ items: allItems.slice(0, MAX_ITEMS) }),
-      { headers: corsHeaders }
-    );
-  } catch (e) {
-    return new Response(
-      JSON.stringify({ error: e.message, items: [] }),
-      { status: 500, headers: corsHeaders }
-    );
+  if (error) {
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message, items: [] }),
+    };
   }
+
+  const items = (rows || []).map((r) => ({
+    title: r.title,
+    link: r.link,
+    description: r.description,
+    pubDate: r.pub_date,
+    source: r.source,
+    sport: r.sport,
+    fighters: (r.news_item_fighters || [])
+      .filter((m) => m.fighters)
+      .map((m) => ({ id: m.fighters.id, name: m.fighters.full_name })),
+  }));
+
+  return {
+    statusCode: 200,
+    headers: corsHeaders,
+    body: JSON.stringify({ items }),
+  };
 };
