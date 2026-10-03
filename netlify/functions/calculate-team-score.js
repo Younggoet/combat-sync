@@ -91,7 +91,7 @@ exports.handler = async (event, context) => {
 
   const { data: activeRoster, error: rosterError } = await supabase
     .from('rosters')
-    .select('id, weight_class, fighter_id')
+    .select('id, division, fighter_id')
     .eq('team_id', teamId)
     .eq('slot_type', 'active');
 
@@ -107,16 +107,16 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ teamId, total: 0, byWeightClass: [], note: 'No active roster slots filled yet' }),
+      body: JSON.stringify({ teamId, total: 0, byDivision: [], note: 'No active roster slots filled yet' }),
     };
   }
 
-  const byWeightClass = [];
+  const byDivision = [];
 
   for (const slot of activeRoster) {
     if (!slot.fighter_id) {
-      byWeightClass.push({
-        weightClass: slot.weight_class,
+      byDivision.push({
+        division: slot.division,
         fighter: null,
         fightPoints: 0,
         note: 'Slot is empty',
@@ -130,8 +130,8 @@ exports.handler = async (event, context) => {
       .eq('fighter_id', slot.fighter_id);
 
     if (perfError || !performances || performances.length === 0) {
-      byWeightClass.push({
-        weightClass: slot.weight_class,
+      byDivision.push({
+        division: slot.division,
         fighter_id: slot.fighter_id,
         fightPoints: 0,
         note: 'No fight history found',
@@ -175,8 +175,8 @@ exports.handler = async (event, context) => {
       fightBreakdown.push({ bout_id: perf.bout_id, points: result.total, breakdown: result.breakdown });
     }
 
-    byWeightClass.push({
-      weightClass: slot.weight_class,
+    byDivision.push({
+      division: slot.division,
       fighter_id: slot.fighter_id,
       fightPoints: Math.round(fighterTotal * 100) / 100,
       fights: fightBreakdown,
@@ -184,12 +184,12 @@ exports.handler = async (event, context) => {
   }
 
   const total = Math.round(
-    byWeightClass.reduce((sum, wc) => sum + (wc.fightPoints || 0), 0) * 100
+    byDivision.reduce((sum, wc) => sum + (wc.fightPoints || 0), 0) * 100
   ) / 100;
 
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ teamId, total, byWeightClass }, null, 2),
+    body: JSON.stringify({ teamId, total, byDivision }, null, 2),
   };
 };
