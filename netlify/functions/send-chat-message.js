@@ -2,18 +2,19 @@
  * Combat — Netlify function: send-chat-message
  *
  * POST /.netlify/functions/send-chat-message
- * Body: { "league_id": "<uuid>", "display_name": "<string>", "body": "<string>" }
+ * Header: Authorization: Bearer <supabase access token>
+ * Body: { "league_id": "<uuid>", "body": "<string>" }
+ *
+ * Requires real sign-in now: the caller's identity comes from their
+ * Supabase Auth JWT, verified server-side, and display_name is read
+ * from their own profiles row (never trusted from the client) — a
+ * message can no longer be sent under a name you don't own.
  *
  * Inserts the message into chat_messages (service role — same table
  * chat.html's Realtime subscription already listens to, so every open
  * tab still gets the message live the instant it's inserted, same as
  * before) and then pushes a notification to every device subscribed to
  * chat alerts.
- *
- * chat.html used to insert directly from the browser with the anon key;
- * it now calls this function instead so a message can trigger a push.
- * The anon insert policy on chat_messages is left in place (harmless),
- * but is no longer this page's path.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -28,6 +29,16 @@ exports.handler = async (event) => {
     };
   }
 
+  const authHeader = event.headers.authorization || event.headers.Authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) {
+    return {
+      statusCode: 401,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Sign in to send a message.' }),
+    };
+  }
+
   let body;
   try {
     body = JSON.parse(event.body || '{}');
@@ -39,8 +50,8 @@ exports.handler = async (event) => {
     };
   }
 
-  const { league_id: leagueId, display_name: displayName, body: messageBody } = body;
-  const missing = ['league_id', 'display_name', 'body'].filter((k) => !body[k]);
+  const { league_id: leagueId, body: messageBody } = body;
+  const missing = ['league_id', 'body'].filter((k) => !body[k]);
   if (missing.length > 0) {
     return {
       statusCode: 400,
@@ -62,6 +73,23 @@ exports.handler = async (event) => {
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData || !userData.user) {
+    return {
+      statusCode: 401,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Your session has expired — sign in again.' }),
+    };
+  }
+  const user = userData.user;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle();
+  const displayName = (profile && profile.display_name) || user.email || 'Anonymous';
 
   const { data: inserted, error: insertError } = await supabase
     .from('chat_messages')
