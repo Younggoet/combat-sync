@@ -9,3 +9,10 @@
 # just reads what this leaves in Supabase; it no longer fetches live.
 [functions."news-sync"]
   schedule = "*/30 * * * *"
+
+# Autopicks for whichever team's clock has run out in a real, active
+# draft room — see netlify/functions/autopick-check.js. Runs every
+# minute, so a pick timer can run up to ~60s past pick_seconds before
+# the bot pick actually lands.
+[functions."autopick-check"]
+  schedule = "* * * * *"

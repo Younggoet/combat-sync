@@ -41,7 +41,7 @@ exports.handler = async (event, context) => {
 
   const { data: room, error: roomError } = await supabase
     .from('draft_rooms')
-    .select('id, league_id, format, status, pick_seconds, team_order, current_pick_number, started_at, completed_at')
+    .select('id, league_id, format, status, pick_seconds, team_order, current_pick_number, started_at, completed_at, current_pick_deadline')
     .eq('id', roomId)
     .maybeSingle();
 
@@ -111,6 +111,7 @@ exports.handler = async (event, context) => {
           pickSeconds: room.pick_seconds,
           teamOrder: room.team_order,
           startedAt: room.started_at,
+          currentPickDeadline: room.current_pick_deadline,
           completedAt: room.completed_at,
         },
         status,
