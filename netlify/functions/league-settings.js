@@ -39,7 +39,7 @@ exports.handler = async (event) => {
 
   const { data: league, error: leagueError } = await supabase
     .from('leagues')
-    .select('id, name')
+    .select('id, name, commissioner_user_id')
     .eq('id', leagueId)
     .maybeSingle();
 
@@ -60,7 +60,7 @@ exports.handler = async (event) => {
 
   const { data: teams, error: teamsError } = await supabase
     .from('teams')
-    .select('id, name')
+    .select('id, name, photo_url, owner_user_id')
     .eq('league_id', leagueId)
     .order('name', { ascending: true });
 
@@ -72,14 +72,14 @@ exports.handler = async (event) => {
     };
   }
 
-  // The settings page only cares about a draft that hasn't started yet —
-  // once a room is active/complete, its team_order is locked in by the
-  // actual picks already made and isn't this page's concern.
+  // Most recent room regardless of status — the settings page already
+  // locks its inputs once status isn't 'pending', and draft.html needs
+  // the room's id and status whatever state it's in (pending to start
+  // it, active to show the live draft, complete to point at rosters).
   const { data: draftRoom, error: roomError } = await supabase
     .from('draft_rooms')
     .select('id, status, pick_seconds, team_order')
     .eq('league_id', leagueId)
-    .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
