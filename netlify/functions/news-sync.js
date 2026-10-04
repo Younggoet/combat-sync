@@ -23,6 +23,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { fetchAllFeeds } = require('./lib/news-feeds');
 const { buildFighterMatchers, matchFightersInText } = require('./lib/fighter-matching');
+const { notifySubscribers } = require('./lib/push');
 
 exports.handler = async () => {
   const supabase = createClient(
@@ -68,6 +69,16 @@ exports.handler = async () => {
   }
 
   const newItems = insertedRows || [];
+
+  if (newItems.length > 0) {
+    // Best-effort — a push failure never fails the sync or loses the
+    // articles, which are already safely stored above.
+    await notifySubscribers(supabase, 'news', {
+      title: newItems.length === 1 ? 'New combat sports article' : `${newItems.length} new combat sports articles`,
+      body: newItems.length === 1 ? newItems[0].title : newItems.slice(0, 3).map((it) => it.title).join(' · '),
+      url: '/news.html',
+    });
+  }
 
   if (newItems.length === 0) {
     return {

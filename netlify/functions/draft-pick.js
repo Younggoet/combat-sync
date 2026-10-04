@@ -31,8 +31,9 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-const { validatePick, TOTAL_SLOTS_PER_TEAM } = require('./lib/draft-engine');
+const { validatePick, snakeTeamForPick, TOTAL_SLOTS_PER_TEAM } = require('./lib/draft-engine');
 const { finalizeDraftRoom } = require('./lib/finalize-draft-room');
+const { notifySubscribers } = require('./lib/push');
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
@@ -194,6 +195,18 @@ exports.handler = async (event, context) => {
     } else {
       finalize = await finalizeDraftRoom(supabase, draftRoomId, room.team_order, allPicks || []);
     }
+  }
+
+  // "You're on the clock" push — best-effort, never blocks or fails the
+  // pick that was just made. No notification when this pick finished the
+  // room (there's no "next team" to tell).
+  if (!isRoomsLastPick) {
+    const nextTeamId = snakeTeamForPick(room.team_order, result.pickNumber + 1);
+    await notifySubscribers(supabase, 'pick', {
+      title: "You're on the clock",
+      body: `Pick ${result.pickNumber + 1} is yours in Combat`,
+      url: '/index.html',
+    }, { teamId: nextTeamId });
   }
 
   return {
