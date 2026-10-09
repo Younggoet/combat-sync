@@ -9,3 +9,11 @@
 # just reads what this leaves in Supabase; it no longer fetches live.
 [functions."news-sync"]
   schedule = "*/30 * * * *"
+
+# Polls Cito for bouts seed-live-card.js has marked 'scheduled'/'live'
+# (today's date only) and upserts current mma_stats — see
+# netlify/functions/live-poll.js. Every minute is the finest grain
+# Netlify scheduled functions support; harmless/cheap on days with no
+# live or upcoming-today bouts since the query returns nothing to do.
+[functions."live-poll"]
+  schedule = "* * * * *"
