@@ -83,9 +83,17 @@ function extractFightList(fightsResponse) {
 }
 
 function pickBoutId(fightEntry) {
+  // Confirmed real shape (Oct 9 2026 live response): the bout id lives
+  // nested under fightEntry.bout.id (a "uuid-..." string) or
+  // fightEntry.bout.dataId (Cito's own numeric-string id, e.g. "13116").
+  // Prefer dataId since that's the plain numeric id sync-bout-detail.js
+  // and live-poll.js pass straight into /ufc/bouts/{boutId}.
   return (
+    fightEntry.bout?.dataId ||
+    fightEntry.bout?.id ||
     fightEntry.boutId ||
     fightEntry.bout_id ||
+    fightEntry.dataId ||
     fightEntry.id ||
     fightEntry.fightId ||
     fightEntry.matchId ||
@@ -143,7 +151,10 @@ export default async (req, context) => {
       const fightList = extractFightList(fightsRes);
 
       const targetFight = fightList.find((f) => {
-        const opponentName = f.opponentName || f.opponent?.fighterName || f.fighterBName || '';
+        // Confirmed real shape: f.opponent.name (f.opponent.fighterName
+        // doesn't exist — that was a guess). Keep the older guesses too
+        // as fallbacks in case Cito's shape varies by endpoint version.
+        const opponentName = f.opponent?.name || f.opponentName || f.opponent?.fighterName || f.fighterBName || '';
         return normalize(opponentName).includes(normalize(nameB).slice(0, 6));
       });
 
