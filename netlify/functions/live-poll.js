@@ -71,17 +71,24 @@ export default async (req, context) => {
     const fightersRaw = data.fighters || [];
     const roundStats = data.roundStats || data.boutStats || [];
 
-    if (fightersRaw.length < 2 && roundStats.length === 0) {
-      // Fight hasn't started yet, or Cito has nothing for it — nothing to do.
+    // IMPORTANT: Cito's Bout Detail endpoint returns fighters[] (the
+    // matchup) as soon as a fight is booked — well before it starts.
+    // fighters[] alone is NOT a signal the fight is happening. Only
+    // roundStats[] actually having entries (or Cito's own status field
+    // explicitly saying so) means strikes have actually been recorded.
+    const citoStatus = (data.status || '').toLowerCase();
+    const citoSaysLive = citoStatus === 'live' || citoStatus === 'in_progress' || citoStatus === 'inprogress';
+    const hasRealStats = roundStats.length > 0;
+
+    if (!hasRealStats && !citoSaysLive) {
+      // Booked but not yet fought — nothing to sync, stay 'scheduled'.
       return;
     }
 
-    // Mark live the first time there's anything at all to sync.
     if (bout.status === 'scheduled') {
       await supabase.from('bouts').update({ status: 'live', last_live_sync_at: new Date().toISOString() }).eq('id', bout.id);
     }
 
-    const citoStatus = (data.status || '').toLowerCase();
     const isFinal = citoStatus === 'completed' || citoStatus === 'final' || !!data.winnerFighterSlug;
 
     const { data: performances } = await supabase
