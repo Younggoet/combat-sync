@@ -48,7 +48,19 @@ export default async (req, context) => {
 
   if (boutsErr) return json(500, { error: boutsErr.message });
 
-  const summary = { checked: bouts.length, updated: 0, completed: 0, errors: [] };
+  // fighter_a/fighter_b were assigned at seed time from a hardcoded
+  // [nameA, nameB] pairing (see seed-live-card.js), NOT from Cito's own
+  // fighters[] array order in the bout-detail response below — those two
+  // orderings are not guaranteed to match. So stats are matched to the
+  // right fighter by NAME, same as seed-live-card.js/sync-bout-detail.js
+  // do, with array order kept only as a last-resort fallback.
+  const fighterIds = Array.from(new Set(bouts.flatMap((b) => [b.fighter_a, b.fighter_b])));
+  const { data: fighterRows } = fighterIds.length
+    ? await supabase.from('fighters').select('id, full_name').in('id', fighterIds)
+    : { data: [] };
+  const nameById = new Map((fighterRows || []).map((f) => [f.id, f.full_name]));
+
+  const summary = { checked: bouts.length, updated: 0, completed: 0, errors: [], nameMatchWarnings: [] };
 
   for (const bout of bouts) {
     try {
@@ -99,13 +111,26 @@ export default async (req, context) => {
     const perfByFighter = new Map((performances || []).map((p) => [p.fighter_id, p.id]));
 
     // Match Cito's fighters[] entries to our two known fighter_ids by
-    // corner (cito returns 'red'/'blue' corner, stable even before
-    // name-matching) falling back to array order (A = index 0).
+    // NAME first (reliable regardless of which order Cito lists them in),
+    // falling back to raw array order (A = index 0) only if a name fails
+    // to match — and flagging that fallback so it's visible, since a
+    // silent array-order mismatch is exactly how stats get swapped.
     const [rawA, rawB] = fightersRaw.length >= 2 ? fightersRaw : [null, null];
+    const matchedByName = fightersRaw.map((f) => ({ raw: f, norm: normalizeName(f.fighterName) }));
+    const nameMatchA = matchedByName.find((m) => m.norm === normalizeName(nameById.get(bout.fighter_a)));
+    const nameMatchB = matchedByName.find((m) => m.norm === normalizeName(nameById.get(bout.fighter_b)));
+    if (!nameMatchA || !nameMatchB) {
+      summary.nameMatchWarnings.push({
+        boutId: bout.id,
+        fighterANameExpected: nameById.get(bout.fighter_a),
+        fighterBNameExpected: nameById.get(bout.fighter_b),
+        citoFighterNames: fightersRaw.map((f) => f.fighterName),
+      });
+    }
 
     const slugFor = (fighterId) => {
-      if (rawA && fighterId === bout.fighter_a) return rawA.fighterSlug;
-      if (rawB && fighterId === bout.fighter_b) return rawB.fighterSlug;
+      if (fighterId === bout.fighter_a) return (nameMatchA ? nameMatchA.raw : rawA)?.fighterSlug || null;
+      if (fighterId === bout.fighter_b) return (nameMatchB ? nameMatchB.raw : rawB)?.fighterSlug || null;
       return null;
     };
 
@@ -156,6 +181,13 @@ export default async (req, context) => {
     }
   }
 };
+
+function normalizeName(name) {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
 
 function sumRounds(rounds) {
   const totals = {
