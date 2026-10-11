@@ -24,21 +24,33 @@ import { createClient } from '@supabase/supabase-js';
 
 const CITO_BASE = 'https://api.citoapi.com/api/v1';
 
-// Tonight's full card (Allen vs Duncan, Oct 10 2026) — same pairing
-// list as the Face-Off Card Draft mockup's BOUTS array.
+// Next card: UFC Fight Night: Buckley vs. Malott, Oct 17 2026 — pulled
+// from SportRadar's live schedule. Names below are spelled to match
+// this project's `fighters.full_name` exactly (confirmed via a direct
+// Supabase lookup), which can differ slightly from SportRadar/Cito's
+// own spelling (e.g. "Cristian Perez Gonzalez" not "Cristian Perez",
+// "SuYoung You" not "Soyoung You", "Timmy Cuamba" not "Timothy Angel
+// Cuamba") — seed-live-card matches by exact normalized name against
+// our existing roster, so a mismatched spelling here would silently
+// skip that bout instead of seeding it.
+//
+// Two bouts from the SportRadar card are left out on purpose: Javad
+// Mahjoub vs. Joel Faglier and Katlyn Cerminara vs. Mackenzie Stiller
+// — both opponents (Faglier, Stiller) aren't in our `fighters` table
+// yet, so they'd just skip anyway. Add them to the roster first if
+// those two bouts should be included.
 const CARD_PAIRS = [
-  ['Brendan Allen', 'Christian Leroy Duncan'],
-  ['Matheus Camilo', 'Jai Herbert'],
-  ['Loopy Godinez', 'Ketlen Souza'],
-  ['Andre Fili', 'Kai Kamaka III'],
-  ['Julius Walker', 'Gerald Meerschaert'],
-  ['Malcolm Wellmaker', 'Otari Tanzilovi'],
-  ['Francisco Prado', 'Ismael Bonfim'],
-  ['Niko Price', 'Leon Shahbazyan'],
-  ['Felipe Franco', 'Brendson Ribeiro'],
-  ['Allen Frye Jr', 'RJ Harris'],
-  ['Alice Pereira', 'Daria Zhelezniakova'],
-  ['Ernesta Kareckaite', 'Melissa Gatto'],
+  ['Joaquin Buckley', 'Mike Malott'],
+  ['Erin Blanchfield', 'Jasmine Jasudavicius'],
+  ['Kyle Nelson', 'Cristian Perez Gonzalez'],
+  ['Marc-Andre Barriault', 'Kyle Daukaus'],
+  ['Louis Jourdain', 'Timmy Cuamba'],
+  ['Mandel Nallo', 'Nate Landwehr'],
+  ['Tanner Boser', 'Jhonata Diniz'],
+  ['Chad Anheliger', 'Steven Koslow'],
+  ['Melissa Croden', 'Chelsea Chandler'],
+  ['Cody Chovancek', 'SuYoung You'],
+  ['Julien Leblanc', 'Nick Galanti'],
 ];
 
 async function citoFetch(path) {
@@ -167,8 +179,8 @@ export default async (req, context) => {
       }
 
       const citoBoutId = pickBoutId(targetFight);
-      const eventName = targetFight.event?.title || targetFight.eventName || 'UFC Fight Night: Allen vs Duncan';
-      const boutDate = targetFight.eventDate || targetFight.event?.eventDate || '2026-10-10';
+      const eventName = targetFight.event?.title || targetFight.eventName || 'UFC Fight Night: Buckley vs Malott';
+      const boutDate = targetFight.eventDate || targetFight.event?.eventDate || '2026-10-17';
 
       if (!citoBoutId) {
         result.status = 'error';
