@@ -37,14 +37,26 @@ export default async (req, context) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const today = new Date().toISOString().slice(0, 10);
+  // IMPORTANT: this used to be `new Date().toISOString().slice(0, 10)`, i.e.
+  // "today" in UTC. bout_date is stored as the US event date (e.g.
+  // 2026-10-10), but a live card running into the evening in US time zones
+  // crosses into the *next* UTC day hours before the card ends (e.g. 7pm
+  // Central = already Oct 11 UTC). At that point `bout_date >= todayUtc`
+  // silently excluded EVERY bout still in progress — confirmed live
+  // tonight: once the server clock crossed into Oct 11 UTC, this stopped
+  // picking up any of the card's remaining scheduled/live bouts at all.
+  // A 2-day lookback buffer tolerates any timezone skew without risking
+  // picking up stale unrelated bouts (status is already scoped to
+  // scheduled/live, so anything old here is still an active bout, not
+  // noise).
+  const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const { data: bouts, error: boutsErr } = await supabase
     .from('bouts')
     .select('id, cito_bout_id, fighter_a, fighter_b, status, bout_date')
     .in('status', ['scheduled', 'live'])
     .not('cito_bout_id', 'is', null)
-    .gte('bout_date', today);
+    .gte('bout_date', cutoff);
 
   if (boutsErr) return json(500, { error: boutsErr.message });
 
