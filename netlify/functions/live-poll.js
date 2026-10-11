@@ -159,10 +159,15 @@ export default async (req, context) => {
     if (anyUpdated) summary.updated++;
 
     if (isFinal) {
+      // Same bug class as the stats attribution above: this must use the
+      // name-matched slugs (slugFor), not raw Cito array order — this exact
+      // spot was still on the old rawA/rawB logic and was confirmed live
+      // tonight to award the win (and the finish bonus that depends on it)
+      // to the wrong fighter.
       const winnerSlug = data.winnerFighterSlug || null;
       let winnerId = null;
-      if (rawA && winnerSlug === rawA.fighterSlug) winnerId = bout.fighter_a;
-      else if (rawB && winnerSlug === rawB.fighterSlug) winnerId = bout.fighter_b;
+      if (winnerSlug && winnerSlug === slugFor(bout.fighter_a)) winnerId = bout.fighter_a;
+      else if (winnerSlug && winnerSlug === slugFor(bout.fighter_b)) winnerId = bout.fighter_b;
 
       await supabase
         .from('bouts')
