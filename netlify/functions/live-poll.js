@@ -90,9 +90,18 @@ export default async (req, context) => {
     // explicitly saying so) means strikes have actually been recorded.
     const citoStatus = (data.status || '').toLowerCase();
     const citoSaysLive = citoStatus === 'live' || citoStatus === 'in_progress' || citoStatus === 'inprogress';
+    // A fight that finished fast (quick KO/sub) can go straight from
+    // "booked" to Cito reporting status: completed without this function
+    // ever catching it mid-fight as "live" — and some completed fights'
+    // roundStats[] can come back empty even though the fight is clearly
+    // over (confirmed live tonight on cito_bout_id 13164: status
+    // "completed" with a winner/method, but 0 roundStats entries). A
+    // completed result is just as real a signal as "live" is, so it must
+    // also pass the gate below, not just citoSaysLive.
+    const citoSaysFinal = citoStatus === 'completed' || citoStatus === 'final' || !!data.winnerFighterSlug;
     const hasRealStats = roundStats.length > 0;
 
-    if (!hasRealStats && !citoSaysLive) {
+    if (!hasRealStats && !citoSaysLive && !citoSaysFinal) {
       // Booked but not yet fought — nothing to sync, stay 'scheduled'.
       return;
     }
@@ -101,7 +110,7 @@ export default async (req, context) => {
       await supabase.from('bouts').update({ status: 'live', last_live_sync_at: new Date().toISOString() }).eq('id', bout.id);
     }
 
-    const isFinal = citoStatus === 'completed' || citoStatus === 'final' || !!data.winnerFighterSlug;
+    const isFinal = citoSaysFinal;
 
     const { data: performances } = await supabase
       .from('performances')
