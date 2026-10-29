@@ -42,10 +42,27 @@ export default async (req, context) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+  // ?probe=true -> return one full raw Cito record (list + detail endpoint) so field names can be seen.
+  if (url.searchParams.get('probe') === 'true') {
+    try {
+      const list = await fetchCitoPage(CITO_API_KEY, 1, 3);
+      const first = list[0] || null;
+      let detail = null, detailErr = null;
+      const id = first && (first.id ?? first.fighterId ?? first.slug);
+      if (id !== undefined) {
+        try {
+          const r = await fetch(`${CITO_BASE}/ufc/fighters/${id}`, { headers: { 'x-api-key': CITO_API_KEY } });
+          detail = r.ok ? await r.json() : null; if (!r.ok) detailErr = r.status;
+        } catch (e) { detailErr = e.message; }
+      }
+      return json(200, { listKeys: first ? Object.keys(first) : [], first, detailErr, detail });
+    } catch (e) { return json(500, { error: e.message }); }
+  }
+
   // Pull all existing fighters once, build a normalized-name lookup map.
   const { data: existingFighters, error: fetchErr } = await supabase
     .from('fighters')
-    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality, date_of_birth');
+    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality, date_of_birth, pro_wins, pro_losses, pro_draws, pro_nc');
 
   if (fetchErr) return json(500, { error: fetchErr.message });
 
@@ -136,12 +153,57 @@ function buildPatch(existing, raw) {
     photo_url: raw.imageUrl ?? null,
     nationality: raw.nationality ?? raw.country ?? null,
   };
+  const rec = toRecord(raw);
+  if (rec) Object.assign(candidate, { pro_wins: rec.w, pro_losses: rec.l, pro_draws: rec.d, pro_nc: rec.nc });
+  const g = scan(raw);
+  if (candidate.height_cm == null) candidate.height_cm = g.height_cm ?? null;
+  if (candidate.reach_cm == null) candidate.reach_cm = g.reach_cm ?? null;
+  if (candidate.date_of_birth == null) candidate.date_of_birth = g.dob ?? null;
+  if (candidate.nationality == null) candidate.nationality = g.nationality ?? null;
   for (const [k, v] of Object.entries(candidate)) {
     if ((existing[k] === null || existing[k] === undefined) && v !== null && v !== undefined) {
       patch[k] = v;
     }
   }
+  if (patch.pro_wins !== undefined || patch.pro_losses !== undefined) patch.record_source = 'cito';
   return patch;
+}
+
+// Flatten nested objects to dotted keys and look for height/reach/dob/country by key name.
+function flat(o, pre = '', out = {}) {
+  for (const [k, v] of Object.entries(o || {})) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) flat(v, pre + k + '.', out);
+    else out[pre + k] = v;
+  }
+  return out;
+}
+function scan(raw) {
+  const f = flat(raw), out = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (v === null || v === undefined || v === '') continue;
+    const lk = k.toLowerCase();
+    if (/image|url|slug|link/.test(lk)) continue;
+    if (/reach/.test(lk) && out.reach_cm == null) out.reach_cm = toCm(v);
+    else if (/height/.test(lk) && out.height_cm == null) out.height_cm = toCm(v);
+    else if (/(birth|dob|born)/.test(lk) && !/place|city|country|nation/.test(lk) && out.dob == null) {
+      const d = new Date(v); if (!Number.isNaN(d.getTime()) && d.getFullYear() > 1950) out.dob = d.toISOString().slice(0, 10);
+    } else if (/(nationality|country|birthplace|born.?in|hometown)/.test(lk) && typeof v === 'string' && out.nationality == null) out.nationality = v;
+  }
+  return out;
+}
+// Official record from {record:"20-5-1"}, {record:{wins,losses,draws}}, or flat wins/losses/draws keys.
+function toRecord(raw) {
+  const f = flat(raw);
+  for (const [k, v] of Object.entries(f)) {
+    if (/record/i.test(k) && typeof v === 'string') {
+      const m = v.match(/(\d+)\s*-\s*(\d+)(?:\s*-\s*(\d+))?(?:\s*\((\d+)\s*nc\))?/i);
+      if (m) return { w: +m[1], l: +m[2], d: +(m[3] || 0), nc: +(m[4] || 0) };
+    }
+  }
+  const pick = (re) => { for (const [k, v] of Object.entries(f)) if (re.test(k.toLowerCase()) && v !== '' && v !== null && !isNaN(+v)) return +v; return null; };
+  const w = pick(/(^|\.)wins$/), l = pick(/(^|\.)losses$/);
+  if (w === null || l === null) return null;
+  return { w, l, d: pick(/(^|\.)draws?$/) || 0, nc: pick(/(no.?contests?|^nc$|\.nc$)/) || 0 };
 }
 
 function normalize(name) {
