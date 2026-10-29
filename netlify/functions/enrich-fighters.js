@@ -62,7 +62,7 @@ export default async (req, context) => {
   // Pull all existing fighters once, build a normalized-name lookup map.
   const { data: existingFighters, error: fetchErr } = await supabase
     .from('fighters')
-    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality, date_of_birth, pro_wins, pro_losses, pro_draws, pro_nc');
+    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality, date_of_birth, pro_wins, pro_losses, pro_draws, pro_nc, record_source');
 
   if (fetchErr) return json(500, { error: fetchErr.message });
 
@@ -161,7 +161,8 @@ function buildPatch(existing, raw) {
   if (candidate.date_of_birth == null) candidate.date_of_birth = g.dob ?? null;
   if (candidate.nationality == null) candidate.nationality = g.nationality ?? null;
   for (const [k, v] of Object.entries(candidate)) {
-    if ((existing[k] === null || existing[k] === undefined) && v !== null && v !== undefined) {
+    const isRec = k.startsWith('pro_') && existing.record_source !== 'cito';
+    if ((isRec || existing[k] === null || existing[k] === undefined) && v !== null && v !== undefined) {
       patch[k] = v;
     }
   }
