@@ -45,7 +45,7 @@ export default async (req, context) => {
   // Pull all existing fighters once, build a normalized-name lookup map.
   const { data: existingFighters, error: fetchErr } = await supabase
     .from('fighters')
-    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality');
+    .select('id, full_name, team, stance, height_cm, reach_cm, photo_url, nationality, date_of_birth');
 
   if (fetchErr) return json(500, { error: fetchErr.message });
 
@@ -63,6 +63,7 @@ export default async (req, context) => {
     matched: 0,
     updated: 0,
     alreadyFilled: 0,
+    sampleRaw: null,
     errors: [],
   };
 
@@ -85,6 +86,7 @@ export default async (req, context) => {
     summary.citoFetched += batch.length;
 
     for (const raw of batch) {
+      if (!summary.sampleRaw) summary.sampleRaw = Object.fromEntries(Object.entries(raw).filter(([k]) => !/image|url|slug/i.test(k)));
       const key = normalize(raw.name);
       const existing = byName.get(key);
       if (!existing) continue;
@@ -128,8 +130,9 @@ function buildPatch(existing, raw) {
   const candidate = {
     team: raw.trainsAt ?? raw.team ?? null,
     stance: raw.stance ?? null,
-    height_cm: toCm(raw.height),
-    reach_cm: toCm(raw.reach),
+    height_cm: toCm(raw.height ?? raw.heightInches ?? raw.heightCm),
+    reach_cm: toCm(raw.reach ?? raw.reachInches ?? raw.reachCm),
+    date_of_birth: toDob(raw),
     photo_url: raw.imageUrl ?? null,
     nationality: raw.nationality ?? raw.country ?? null,
   };
@@ -159,11 +162,27 @@ async function fetchCitoPage(apiKey, page, limit) {
   return Array.isArray(body) ? body : body.data;
 }
 
-function toCm(inches) {
-  if (inches === null || inches === undefined) return null;
-  const n = Number(inches);
-  if (Number.isNaN(n)) return null;
-  return Math.round(n * 2.54 * 10) / 10;
+// Accepts inches (76), strings like 6'4", 76", 76 in, 193 cm, or "6 ft 4 in".
+function toCm(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v > 0 ? Math.round(v * 2.54 * 10) / 10 : null;
+  const t = String(v).trim().toLowerCase();
+  let m = t.match(/(\d+(?:\.\d+)?)\s*cm/);
+  if (m) return Math.round(parseFloat(m[1]) * 10) / 10;
+  m = t.match(/(\d+)\s*(?:'|ft|feet)\s*(\d+(?:\.\d+)?)?/);
+  if (m) return Math.round(((parseInt(m[1], 10) * 12) + (m[2] ? parseFloat(m[2]) : 0)) * 2.54 * 10) / 10;
+  m = t.match(/(\d+(?:\.\d+)?)/);
+  if (m) return Math.round(parseFloat(m[1]) * 2.54 * 10) / 10;
+  return null;
+}
+
+// Date of birth from whichever field Cito uses; falls back to age (approximate, Jan 1 of birth year is NOT guessed).
+function toDob(raw) {
+  const c = raw.dateOfBirth ?? raw.dob ?? raw.birthDate ?? raw.birthday ?? raw.born ?? null;
+  if (!c) return null;
+  const d = new Date(c);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
 }
 
 function json(status, body) {
