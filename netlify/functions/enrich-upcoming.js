@@ -25,7 +25,7 @@ export default async (req) => {
     const { data: bs } = await sb.from('bouts').select('fighter_a, fighter_b').eq('status', 'scheduled').gte('bout_date', new Date().toISOString().slice(0, 10));
     ids = new Set((bs || []).flatMap((b) => [b.fighter_a, b.fighter_b]).filter(Boolean));
   }
-  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source');
+  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source, age_years');
   if (error) return json(500, { error: error.message });
   const fs = fs0.filter((f) => !ids || ids.has(f.id)).slice(offset, offset + n);
 
@@ -42,11 +42,14 @@ export default async (req) => {
       const res = await get(slugify(f.full_name));
       if (!res.data || res.status) { out.notFound.push(f.full_name + (res.status ? ' (' + res.status + ')' : '')); return; }
       const c = res.data;
-      if (!out.sample) out.sample = { name: c.name, country: c.country, birthDate: c.birthDate, heightInches: c.heightInches, reachInches: c.reachInches, stance: c.stance, recordText: c.recordText, trainsAt: c.trainsAt };
+      if (!out.sample) out.sample = { name: c.name, country: c.country, age: c.age, placeOfBirth: c.placeOfBirth, birthDate: c.birthDate, heightInches: c.heightInches, reachInches: c.reachInches, stance: c.stance, recordText: c.recordText, trainsAt: c.trainsAt };
       out.found++;
       const patch = {};
       if (!f.nationality && c.country) patch.nationality = ALIAS[c.country] || c.country;
       if (!f.date_of_birth && c.birthDate) { const d = new Date(c.birthDate); if (!isNaN(d)) patch.date_of_birth = d.toISOString().slice(0, 10); }
+      const ag = num(c.age);
+      if (!f.date_of_birth && !patch.date_of_birth && ag && ag > 15 && ag < 60) { patch.age_years = ag; patch.age_as_of = new Date().toISOString().slice(0, 10); }
+      if (!f.nationality && !patch.nationality && c.placeOfBirth) { const seg = String(c.placeOfBirth).split(',').pop().trim(); if (seg) patch.nationality = ALIAS[seg] || seg; }
       if (!f.height_cm && num(c.heightInches)) patch.height_cm = Math.round(c.heightInches * 2.54 * 10) / 10;
       if (!f.reach_cm && num(c.reachInches)) patch.reach_cm = Math.round(c.reachInches * 2.54 * 10) / 10;
       if (!f.stance && c.stance) patch.stance = c.stance;
