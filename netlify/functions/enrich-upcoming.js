@@ -31,13 +31,19 @@ export default async (req) => {
 
   const out = { fighters: fs.length, found: 0, updated: 0, filled: {}, notFound: [], errors: [], sample: null };
   const get = async (slug) => {
-    const r = await fetch(`${BASE}/ufc/fighters/${slug}`, { headers: { 'x-api-key': CITO_API_KEY } });
+    let r;
+    for (let t = 0; t < 4; t++) {
+      r = await fetch(`${BASE}/ufc/fighters/${slug}`, { headers: { 'x-api-key': CITO_API_KEY } });
+      if (r.status !== 429) break;
+      await new Promise((ok) => setTimeout(ok, 700 * (t + 1)));
+    }
     if (!r.ok) return { status: r.status };
     const b = await r.json();
     return { data: b && b.data && !Array.isArray(b.data) ? b.data : b };
   };
 
-  await Promise.all(fs.map(async (f) => {
+  const queue = fs.slice();
+  const work = async (f) => {
     try {
       const res = await get(slugify(f.full_name));
       if (!res.data || res.status) { out.notFound.push(f.full_name + (res.status ? ' (' + res.status + ')' : '')); return; }
@@ -64,7 +70,8 @@ export default async (req) => {
       out.updated++;
       for (const k of Object.keys(patch)) out.filled[k] = (out.filled[k] || 0) + 1;
     } catch (e) { out.errors.push(f.full_name + ': ' + e.message); }
-  }));
+  };
+  await Promise.all(Array.from({ length: 4 }, async () => { while (queue.length) await work(queue.shift()); }));
   return json(200, out);
 };
 
