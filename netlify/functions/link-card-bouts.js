@@ -45,11 +45,26 @@ export default async (req) => {
         const m = sr.find((x) => norm(x.fighterName || x.name) === norm(A)) || sr[0];
         const slug = m && (m.slug || m.fighterSlug);
         if (!slug) throw new Error('fighter A not found on Cito');
-        const list = arr(await cito(`/ufc/fighters/${slug}/fights`), ['fights']);
-        const f = list.find((x) => norm(x.opponent?.name || x.opponentName || x.opponent?.fighterName || '').includes(norm(B).slice(0, 6)));
-        if (!f) throw new Error('no fight vs opponent in Cito list');
+        const last = (n) => norm((n || '').trim().split(/\s+/).slice(-1)[0]);
+        const dateOf = (x) => String(x.eventDate || x.event?.eventDate || x.event?.date || x.date || '').slice(0, 10);
+        const oppOf = (x) => x.opponent?.name || x.opponentName || x.opponent?.fighterName || '';
+        const find = async (who, opp) => {
+          const sr = arr(await cito(`/ufc/search?q=${encodeURIComponent(who)}`), ['fighters', 'results']);
+          const m = sr.find((x) => norm(x.fighterName || x.name) === norm(who)) || sr[0];
+          const slug = m && (m.slug || m.fighterSlug);
+          if (!slug) return { err: `${who} not found on Cito` };
+          const list = arr(await cito(`/ufc/fighters/${slug}/fights`), ['fights']);
+          const hits = list.filter((x) => norm(oppOf(x)).includes(norm(opp).slice(0, 6)) || (last(opp) && norm(oppOf(x)).includes(last(opp))));
+          const f = hits.find((x) => dateOf(x) === date) || hits.find((x) => !dateOf(x));
+          return f ? { f } : { err: `no fight vs ${opp} on ${date}`, seen: list.slice(0, 3).map((x) => `${oppOf(x)} ${dateOf(x)}`) };
+        };
+        let res = await find(A, B);
+        if (!res.f) { const r2 = await find(B, A); if (r2.f) res = r2; else res.err += ' | ' + r2.err; }
+        if (!res.f) { r.seen = res.seen; throw new Error(res.err); }
+        const f = res.f;
         const id = f.bout?.dataId || f.bout?.id || f.boutId || f.bout_id || f.dataId || f.id || f.fightId;
         if (!id) throw new Error('no bout id on matched fight');
+        if (!/^\d+$/.test(String(id))) throw new Error('matched fight has no numeric Cito id: ' + id);
         r.citoBoutId = String(id);
         if (!dry) await sb.from('bouts').update({ cito_bout_id: String(id), data_source: 'cito' }).eq('id', b.id);
       } else r.citoBoutId = b.cito_bout_id;
