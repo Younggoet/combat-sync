@@ -25,7 +25,7 @@ export default async (req) => {
     const { data: bs } = await sb.from('bouts').select('fighter_a, fighter_b').eq('status', 'scheduled').gte('bout_date', new Date().toISOString().slice(0, 10));
     ids = new Set((bs || []).flatMap((b) => [b.fighter_a, b.fighter_b]).filter(Boolean));
   }
-  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source, age_years');
+  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source, age_years, photo_url');
   if (error) return json(500, { error: error.message });
   const fs = fs0.filter((f) => !ids || ids.has(f.id)).slice(offset, offset + n);
 
@@ -48,7 +48,7 @@ export default async (req) => {
       const res = await get(slugify(f.full_name));
       if (!res.data || res.status) { out.notFound.push(f.full_name + (res.status ? ' (' + res.status + ')' : '')); return; }
       const c = res.data;
-      if (!out.sample) out.sample = { name: c.name, country: c.country, age: c.age, placeOfBirth: c.placeOfBirth, birthDate: c.birthDate, heightInches: c.heightInches, reachInches: c.reachInches, stance: c.stance, recordText: c.recordText, trainsAt: c.trainsAt };
+      if (!out.sample) out.sample = { name: c.name, country: c.country, age: c.age, placeOfBirth: c.placeOfBirth, birthDate: c.birthDate, heightInches: c.heightInches, reachInches: c.reachInches, stance: c.stance, recordText: c.recordText, trainsAt: c.trainsAt, headshotUrl: c.headshotUrl, imageUrl: c.imageUrl };
       out.found++;
       const patch = {};
       if (!f.nationality && c.country) patch.nationality = ALIAS[c.country] || c.country;
@@ -56,6 +56,9 @@ export default async (req) => {
       const ag = num(c.age);
       if (!f.date_of_birth && !patch.date_of_birth && ag && ag > 15 && ag < 60) { patch.age_years = ag; patch.age_as_of = new Date().toISOString().slice(0, 10); }
       if (!f.nationality && !patch.nationality && c.placeOfBirth) { const seg = String(c.placeOfBirth).split(',').pop().trim(); if (seg) patch.nationality = ALIAS[seg] || seg; }
+      const good = (u) => u && !/silhouette|placeholder|default/i.test(u);
+      const photo = [c.headshotUrl, c.imageUrl, c.bodyImageUrl, c.proxiedImageUrl].find(good);
+      if (photo && (!f.photo_url || /silhouette|placeholder|default/i.test(f.photo_url))) patch.photo_url = photo;
       if (!f.height_cm && num(c.heightInches)) patch.height_cm = Math.round(c.heightInches * 2.54 * 10) / 10;
       if (!f.reach_cm && num(c.reachInches)) patch.reach_cm = Math.round(c.reachInches * 2.54 * 10) / 10;
       if (!f.stance && c.stance) patch.stance = c.stance;
