@@ -23,6 +23,8 @@
 // ENV VARS: CITO_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 import { createClient } from '@supabase/supabase-js';
+import scoring from './scoring.js';
+const { calculateFightPoints } = scoring;
 
 const CITO_BASE = 'https://api.citoapi.com/api/v1';
 
@@ -177,7 +179,27 @@ export default async (req, context) => {
       anyUpdated = true;
     }
 
-    if (anyUpdated) summary.updated++;
+    if (anyUpdated) {
+      summary.updated++;
+      // Write Fight Points onto each performance row. The league screens and
+      // cr_refresh_scores read performances.fantasy_points, so without this
+      // live stats never turn into points.
+      const { data: sRows } = await supabase
+        .from('mma_stats')
+        .select('*')
+        .in('performance_id', [...perfByFighter.values()])
+        .eq('round_number', 0);
+      const statsByPerf = new Map((sRows || []).map((r) => [r.performance_id, r]));
+      const idA = perfByFighter.get(bout.fighter_a);
+      const idB = perfByFighter.get(bout.fighter_b);
+      for (const [mine, theirs] of [[idA, idB], [idB, idA]]) {
+        const me = statsByPerf.get(mine);
+        if (!mine || !me) continue;
+        const pts = calculateFightPoints(me, statsByPerf.get(theirs) || null).total;
+        const { error: fpErr } = await supabase.from('performances').update({ fantasy_points: pts }).eq('id', mine);
+        if (fpErr) summary.errors.push({ boutId: bout.id, message: 'fantasy_points update failed: ' + fpErr.message });
+      }
+    }
 
     if (isFinal) {
       // Same bug class as the stats attribution above: this must use the
