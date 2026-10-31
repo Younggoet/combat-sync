@@ -53,12 +53,12 @@ export default async (req, context) => {
   // noise).
   const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-  const { data: bouts, error: boutsErr } = await supabase
-    .from('bouts')
-    .select('id, cito_bout_id, fighter_a, fighter_b, status, bout_date')
-    .in('status', ['scheduled', 'live'])
-    .not('cito_bout_id', 'is', null)
-    .gte('bout_date', cutoff);
+  // ?rebuild=<cito_bout_id> re-reads one bout from Cito whatever its status
+  // (used to repair stats written with the old name-matching bug).
+  const rebuild = new URL(req.url).searchParams.get('rebuild');
+  let boutQ = supabase.from('bouts').select('id, cito_bout_id, fighter_a, fighter_b, status, bout_date').not('cito_bout_id', 'is', null);
+  boutQ = rebuild ? boutQ.eq('cito_bout_id', String(rebuild)) : boutQ.in('status', ['scheduled', 'live']).gte('bout_date', cutoff);
+  const { data: bouts, error: boutsErr } = await boutQ;
 
   if (boutsErr) return json(500, { error: boutsErr.message });
 
@@ -140,20 +140,34 @@ export default async (req, context) => {
     // silent array-order mismatch is exactly how stats get swapped.
     const [rawA, rawB] = fightersRaw.length >= 2 ? fightersRaw : [null, null];
     const matchedByName = fightersRaw.map((f) => ({ raw: f, norm: normalizeName(f.fighterName) }));
-    const nameMatchA = matchedByName.find((m) => m.norm === normalizeName(nameById.get(bout.fighter_a)));
-    const nameMatchB = matchedByName.find((m) => m.norm === normalizeName(nameById.get(bout.fighter_b)));
-    if (!nameMatchA || !nameMatchB) {
+    // Match each of our fighters to a Cito entry. Exact normalized name first;
+    // then last-name match (Cito says "Zachary Reese" where we have "Zach Reese");
+    // then, if one side matched, the OTHER side is the remaining Cito entry.
+    // Raw array order is only used when nothing else works. The old logic fell
+    // back to array order per fighter, which could hand BOTH fighters the same
+    // Cito entry (identical stats on both sides of a bout).
+    const lastName = (n) => normalizeName((n || '').trim().split(/\s+/).slice(-1)[0]);
+    const nA = nameById.get(bout.fighter_a), nB = nameById.get(bout.fighter_b);
+    const pick = (nm, taken) =>
+      matchedByName.find((m) => m !== taken && m.norm === normalizeName(nm)) ||
+      matchedByName.find((m) => m !== taken && lastName(m.raw.fighterName) && lastName(m.raw.fighterName) === lastName(nm));
+    let nameMatchA = pick(nA, null);
+    let nameMatchB = pick(nB, nameMatchA);
+    if (nameMatchA && !nameMatchB && matchedByName.length === 2) nameMatchB = matchedByName.find((m) => m !== nameMatchA);
+    if (nameMatchB && !nameMatchA && matchedByName.length === 2) nameMatchA = matchedByName.find((m) => m !== nameMatchB);
+    if (!nameMatchA && !nameMatchB && matchedByName.length === 2) { nameMatchA = matchedByName[0]; nameMatchB = matchedByName[1]; }
+    if (!nameMatchA || !nameMatchB || nameMatchA === nameMatchB) {
       summary.nameMatchWarnings.push({
         boutId: bout.id,
-        fighterANameExpected: nameById.get(bout.fighter_a),
-        fighterBNameExpected: nameById.get(bout.fighter_b),
+        fighterANameExpected: nA,
+        fighterBNameExpected: nB,
         citoFighterNames: fightersRaw.map((f) => f.fighterName),
       });
     }
 
     const slugFor = (fighterId) => {
-      if (fighterId === bout.fighter_a) return (nameMatchA ? nameMatchA.raw : rawA)?.fighterSlug || null;
-      if (fighterId === bout.fighter_b) return (nameMatchB ? nameMatchB.raw : rawB)?.fighterSlug || null;
+      if (fighterId === bout.fighter_a) return nameMatchA ? nameMatchA.raw.fighterSlug || null : null;
+      if (fighterId === bout.fighter_b) return nameMatchB ? nameMatchB.raw.fighterSlug || null : null;
       return null;
     };
 
