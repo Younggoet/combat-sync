@@ -46,13 +46,15 @@ export default async (req) => {
   const idOf = (f) => f.bout?.dataId || f.bout?.id || f.boutId || f.bout_id || f.dataId || f.id || f.fightId;
   const out = [];
 
-  for (const name of names) {
-    const r = { name };
+  for (const raw of names) {
+    const [name, citoName] = raw.split('|').map((x) => x.trim());
+    const r = { name, cito_search: citoName || name };
     try {
       const { data: row } = await sb.from('fighters').select('id,full_name').ilike('full_name', name).maybeSingle();
       if (!row) throw new Error('not in our fighters table');
-      const sr = arr(await cito(`/ufc/search?q=${encodeURIComponent(name)}`), ['fighters', 'results']);
-      const m = sr.find((x) => norm(x.fighterName || x.name) === norm(name));
+      const sr = arr(await cito(`/ufc/search?q=${encodeURIComponent(citoName || name)}`), ['fighters', 'results']);
+      r.cito_candidates = sr.slice(0, 5).map((x) => (x.fighterName || x.name) + ' / ' + (x.slug || x.fighterSlug));
+      const m = sr.find((x) => norm(x.fighterName || x.name) === norm(citoName || name));
       const slug = m && (m.slug || m.fighterSlug);
       if (!slug) throw new Error('exact name not found on Cito');
       const list = arr(await cito(`/ufc/fighters/${slug}/fights`), ['fights']);
