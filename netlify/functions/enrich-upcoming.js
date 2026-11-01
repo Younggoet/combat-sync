@@ -25,7 +25,7 @@ export default async (req) => {
     const { data: bs } = await sb.from('bouts').select('fighter_a, fighter_b').eq('status', 'scheduled').gte('bout_date', new Date().toISOString().slice(0, 10));
     ids = new Set((bs || []).flatMap((b) => [b.fighter_a, b.fighter_b]).filter(Boolean));
   }
-  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source, age_years, photo_url');
+  const { data: fs0, error } = await sb.from('fighters').select('id, full_name, nationality, date_of_birth, height_cm, reach_cm, stance, team, record_source, age_years, photo_url, pro_wins');
   if (error) return json(500, { error: error.message });
   const fs = fs0.filter((f) => !ids || ids.has(f.id)).slice(offset, offset + n);
 
@@ -64,7 +64,7 @@ export default async (req) => {
       if (!f.stance && c.stance) patch.stance = c.stance;
       if (!f.team && c.trainsAt) patch.team = c.trainsAt;
       const w = num(c.recordWins), l = num(c.recordLosses);
-      if (w !== null && l !== null) Object.assign(patch, { pro_wins: w, pro_losses: l, pro_draws: num(c.recordDraws) || 0, pro_nc: num(c.recordNoContest) || 0, record_source: 'cito' });
+      if (w !== null && l !== null && f.pro_wins === null) Object.assign(patch, { pro_wins: w, pro_losses: l, pro_draws: num(c.recordDraws) || 0, pro_nc: num(c.recordNoContest) || 0, record_source: 'cito' });
       if (!Object.keys(patch).length) return;
       if (!dryRun) {
         const { error: e } = await sb.from('fighters').update(patch).eq('id', f.id);
