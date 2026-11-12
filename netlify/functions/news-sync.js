@@ -31,13 +31,14 @@ exports.handler = async () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  const items = await fetchAllFeeds();
+  const feedReport = {};
+  const items = await fetchAllFeeds(feedReport);
 
   if (items.length === 0) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fetched: 0, inserted: 0, matched: 0, note: 'No items fetched from any feed' }),
+      body: JSON.stringify({ fetched: 0, inserted: 0, matched: 0, note: 'No items fetched from any feed', feeds: feedReport }),
     };
   }
 
@@ -47,7 +48,7 @@ exports.handler = async () => {
     title: it.title,
     link: it.link,
     description: it.description || null,
-    pub_date: it.pubDate ? new Date(it.pubDate).toISOString() : null,
+    pub_date: it.pubDate && !isNaN(new Date(it.pubDate)) ? new Date(it.pubDate).toISOString() : null,
   }));
 
   // onConflict + ignoreDuplicates means this is an INSERT ... ON CONFLICT
@@ -84,7 +85,7 @@ exports.handler = async () => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fetched: items.length, inserted: 0, matched: 0, note: 'Nothing new — all articles already stored' }),
+      body: JSON.stringify({ fetched: items.length, inserted: 0, matched: 0, note: 'Nothing new — all articles already stored', feeds: feedReport }),
     };
   }
 
@@ -138,6 +139,6 @@ exports.handler = async () => {
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fetched: items.length, inserted: newItems.length, matched: matchedCount }),
+    body: JSON.stringify({ fetched: items.length, inserted: newItems.length, matched: matchedCount, feeds: feedReport }),
   };
 };
