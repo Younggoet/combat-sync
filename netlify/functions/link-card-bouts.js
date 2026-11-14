@@ -30,7 +30,7 @@ export default async (req) => {
   if (!date) return json(400, { error: 'Add ?date=YYYY-MM-DD' });
   const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data: bouts, error } = await sb.from('bouts').select('id,fighter_a,fighter_b,bout_date,cito_bout_id').eq('bout_date', date);
+  const { data: bouts, error } = await sb.from('bouts').select('id,fighter_a,fighter_b,bout_date,cito_bout_id').eq('bout_date', date).neq('status', 'cancelled');
   if (error) return json(500, { error: error.message });
   const ids = [...new Set(bouts.flatMap((b) => [b.fighter_a, b.fighter_b]))];
   const { data: fs } = await sb.from('fighters').select('id,full_name').in('id', ids);
@@ -55,7 +55,10 @@ export default async (req) => {
           if (!slug) return { err: `${who} not found on Cito` };
           const list = arr(await cito(`/ufc/fighters/${slug}/fights`), ['fights']);
           const hits = list.filter((x) => norm(oppOf(x)).includes(norm(opp).slice(0, 6)) || (last(opp) && norm(oppOf(x)).includes(last(opp))));
-          const f = hits.find((x) => dateOf(x) === date) || hits.find((x) => !dateOf(x));
+          let f = hits.find((x) => dateOf(x) === date) || hits.find((x) => !dateOf(x));
+          // Cito sometimes lists a fight on the right date with a blank opponent name.
+          // If this fighter has exactly one such fight that day, it is the one.
+          if (!f) { const blank = list.filter((x) => dateOf(x) === date && !String(oppOf(x)).trim()); if (blank.length === 1) f = blank[0]; }
           return f ? { f } : { err: `no fight vs ${opp} on ${date}`, seen: list.slice(0, 3).map((x) => `${oppOf(x)} ${dateOf(x)}`) };
         };
         let res = await find(A, B);
