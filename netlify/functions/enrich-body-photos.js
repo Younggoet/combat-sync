@@ -28,7 +28,7 @@ export default async (req) => {
     const { data } = await sb.from('fighters').select('id, full_name, body_photo_url').in('full_name', names); fs = data || [];
   }
 
-  const out = { fighters: fs.length, saved: 0, noBodyPhoto: [], notFound: [], errors: [], imageFieldsSeen: {} };
+  const out = { sample: {}, fighters: fs.length, saved: 0, noBodyPhoto: [], notFound: [], errors: [], imageFieldsSeen: {} };
   const queue = fs.slice();
   const work = async (f) => {
     try {
@@ -41,7 +41,7 @@ export default async (req) => {
       if (!r.ok) { out.notFound.push(f.full_name + ' (' + r.status + ')'); return; }
       const b = await r.json();
       const c = b && b.data && !Array.isArray(b.data) ? b.data : b;
-      for (const [k, v] of Object.entries(c || {})) if (isImg(v)) out.imageFieldsSeen[k] = (out.imageFieldsSeen[k] || 0) + 1;
+      for (const [k, v] of Object.entries(c || {})) if (isImg(v)) { out.imageFieldsSeen[k] = (out.imageFieldsSeen[k] || 0) + 1; if (Object.keys(out.sample).length < 2) (out.sample[f.full_name] = out.sample[f.full_name] || {})[k] = v; }
       const url = [c.bodyImageUrl, c.fullBodyImageUrl, c.fullBodyUrl, c.bodyUrl].find(isImg);
       if (!url) { out.noBodyPhoto.push(f.full_name); return; }
       if (!dryRun) {
