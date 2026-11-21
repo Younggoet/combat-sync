@@ -112,7 +112,12 @@ export default async (req, context) => {
     // "completed" with a winner/method, but 0 roundStats entries). A
     // completed result is just as real a signal as "live" is, so it must
     // also pass the gate below, not just citoSaysLive.
-    const citoSaysFinal = citoStatus === 'completed' || citoStatus === 'final' || !!data.winnerFighterSlug;
+    // A bare status of 'completed'/'final' is NOT enough: on UFC Doha (2026-11-21)
+    // Cito reported it for three fights that had not started and one that was
+    // live, and they were all marked completed with no winner or method, which
+    // also stopped them being polled. A real final has a winner or a method.
+    const hasResult = !!(data.winnerFighterSlug || data.method);
+    const citoSaysFinal = hasResult && (citoStatus === 'completed' || citoStatus === 'final' || !!data.winnerFighterSlug);
     const hasRealStats = roundStats.length > 0;
 
     if (!hasRealStats && !citoSaysLive && !citoSaysFinal) {
