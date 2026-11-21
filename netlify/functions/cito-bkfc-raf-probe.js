@@ -39,13 +39,41 @@ export default async (req) => {
           const ds = list.map(x => x[dk]).filter(Boolean).sort();
           r.dateKey = dk; r.firstDate = ds[0]; r.lastDate = ds[ds.length - 1];
         }
-        const bk = ['bouts', 'fights', 'matches', 'card'].find(k => Array.isArray(list[0][k]));
-        if (bk) r.boutsPerEvent = list.slice(-15).map(x => ({ name: x.name || x.event_name || x.title, date: x[dk], bouts: (x[bk] || []).length }));
+        const bk = ['bouts', 'fights', 'matches', 'card'].find(k => list[0][k] != null);
+        if (bk) {
+          // bouts can be an array, or an object like { total, completed }
+          const cnt = (x) => Array.isArray(x[bk]) ? x[bk].length : (x[bk] && x[bk].total != null ? x[bk].total : null);
+          const done = (x) => (x[bk] && x[bk].completed != null ? x[bk].completed : null);
+          r.eventLines = list.slice().sort((a, b) => String(a[dk]).localeCompare(String(b[dk])))
+            .map(x => `${x[dk]} | ${x.status || ''} | bouts ${cnt(x)}${done(x) != null ? ' (done ' + done(x) + ')' : ''} | ${x.name || x.slug}`);
+        }
+        r.firstSlug = list[0].slug || null;
+        r.lastSlug = list[list.length - 1].slug || null;
       } else {
         r.sample = JSON.stringify(data).slice(0, 800);
       }
     } catch (e) { r.error = String(e.message || e); }
     out.results[p] = r;
+  }
+  // Look inside one completed RAF event: do its bouts carry scoring actions or only a final score?
+  if (!one) {
+    const ev = out.results['/raf/events'];
+    const slugs = [];
+    if (ev && ev.eventLines) {
+      // pick the most recent event that has completed bouts
+      const lines = ev.eventLines.filter(l => /done [1-9]/.test(l));
+      if (lines.length) slugs.push(lines[lines.length - 1].split(' | ').pop());
+    }
+    out.rafDetail = {};
+    for (const s of slugs) {
+      for (const p of [`/raf/events/${s}`, `/raf/events/${s}/bouts`]) {
+        try {
+          const res = await fetch(CITO_BASE + p, { headers: { 'x-api-key': key } });
+          const text = await res.text();
+          out.rafDetail[p] = { http: res.status, bytes: text.length, start: text.slice(0, 3500) };
+        } catch (e) { out.rafDetail[p] = { error: String(e.message || e) }; }
+      }
+    }
   }
   return json(200, out);
 };
