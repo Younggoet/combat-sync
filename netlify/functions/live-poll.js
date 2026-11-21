@@ -190,6 +190,17 @@ export default async (req, context) => {
           { onConflict: 'performance_id,round_number' }
         );
       if (upsertErr) throw new Error(`mma_stats upsert failed: ${upsertErr.message}`);
+      // Per-round rows too, so the Live Stats popup can show the current round,
+      // the round chips and the per-round feed while the fight is still going.
+      const roundRows = fighterRounds
+        .filter((r) => Number.isInteger(r.round) && r.round > 0)
+        .map((r) => ({ performance_id: performanceId, round_number: r.round, ...sumRounds([r]) }));
+      if (roundRows.length) {
+        const { error: rErr } = await supabase
+          .from('mma_stats')
+          .upsert(roundRows, { onConflict: 'performance_id,round_number' });
+        if (rErr) summary.errors.push({ boutId: bout.id, message: 'round rows upsert failed: ' + rErr.message });
+      }
       anyUpdated = true;
     }
 
