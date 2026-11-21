@@ -50,7 +50,7 @@ export default async (req) => {
         r.firstSlug = list[0].slug || null;
         r.lastSlug = list[list.length - 1].slug || null;
       } else {
-        r.sample = JSON.stringify(data).slice(0, 800);
+        r.sample = JSON.stringify(data).slice(0, one ? 9000 : 800);
       }
     } catch (e) { r.error = String(e.message || e); }
     out.results[p] = r;
