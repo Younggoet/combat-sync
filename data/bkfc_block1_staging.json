@@ -1,21 +1,559 @@
-{"block":"BKFC Block 1 (staging, not loaded)","gathered":"2026-11-24","status":"unverified web data; William approves before load",
-"events":[
-{"name":"BKFC Fight Night Hershey: Pague vs Richman","date":"2026-12-04","venue":"Giant Center","city":"Hershey, PA","bouts_total":13,"source":"ufcalendar.com, fightmag.com, bkfc.com/events",
- "bouts":[
- ["Main event","Middleweight",5,"Dustin Pague","6-2","Mike Richman","8-4"],
- ["Co-main","Ironweight",5,"Sam Alvey","34-18-1","Jonathan Miller","2-3"],
- ["","Bantamweight",5,"Benjamin Moser","5-1","Julian Valencia","0-2"],
- ["","Middleweight",5,"Matt Semelsberger","0-0","Michael Manno","2-2"],
- ["","Heavyweight",5,"Pat Carroll","2-0","Nelson Best","4-0"],
- ["","Featherweight",5,"Elijah Harris","2-3","Stevo Morris","3-3"],
- ["","Featherweight",5,"Jay Haas","0-1","Eduardo Peralta","2-4"],
- ["","Bantamweight",5,"Hunter Starner","3-3","Blaine Shutt","8-6"],
- ["","Cruiserweight",5,"Lex Ludlow","4-1","Mike Liberto","1-0"],
- ["","Bantamweight",5,"Tim Yanc","0-0","Malcolm Schuyler","1-1"],
- ["","Lightweight",5,"Zachary Pannell","1-6","Zachary Shingara","0-0"],
- ["","Featherweight",5,"Colin Reeser","0-1","Fabricio Berrun","0-0"],
- ["","Heavyweight",5,"Brian Newman","1-0","Dale Reed","0-0"]]},
-{"name":"BKFC 97 Hollywood: Henry vs Collard","date":"2026-12-11","venue":"Hard Rock Live, Seminole Hard Rock","city":"Hollywood, FL","bouts_total":null,"source":"bkfc.com/events, mmasucka.com",
- "bouts":[["Main event","Welterweight",5,"Bryce Henry","","Clay Collard",""],["Featured","Women's flyweight",5,"Jessica Eye","","Desiree Yanez",""]]},
-{"name":"BKFC Bruise Cruise: Stewart vs Duran","date":"2027-01-23","venue":"Norwegian Jewel","city":"Bahamas (cruise)","bouts_total":null,"source":"bkfc.com/events",
- "bouts":[["Main event","",5,"Kai Stewart","","Bryan Duran",""]]}]}
+{
+ "block": "BKFC Block 1 (staging, not loaded)",
+ "gathered": "2026-11-24",
+ "source": "Cito /bkfc/events/upcoming (cards); records only where web sources gave them (Hershey)",
+ "events": [
+  {
+   "cito_slug": "bkfc-fight-night-hershey",
+   "name": "BKFC Fight Night Hershey: Pague vs Richman",
+   "date": "2026-12-04",
+   "time": "7:00 PM America/New_York",
+   "venue": "Giant Center",
+   "city": "Hershey, PA",
+   "bouts": [
+    {
+     "order": 1,
+     "slot": "Main event",
+     "weight_class": "Middleweight",
+     "title": 0,
+     "red": {
+      "name": "Mike Richman",
+      "nickname": "The Marine",
+      "slug": "mike-richman",
+      "record": "8-4"
+     },
+     "blue": {
+      "name": "Dustin Pague",
+      "nickname": "The Disciple",
+      "slug": "dustin-pague",
+      "record": "6-2"
+     }
+    },
+    {
+     "order": 2,
+     "slot": "Co-main",
+     "weight_class": "Ironweight",
+     "title": 0,
+     "red": {
+      "name": "Jonathan Miller",
+      "nickname": null,
+      "slug": "jonathan-miller",
+      "record": "2-3"
+     },
+     "blue": {
+      "name": "Sam Alvey",
+      "nickname": null,
+      "slug": "sam-alvey",
+      "record": "34-18-1"
+     }
+    },
+    {
+     "order": 3,
+     "slot": "Featured",
+     "weight_class": "Middleweight",
+     "title": 0,
+     "red": {
+      "name": "Michael Manno",
+      "nickname": "Port City Soldier",
+      "slug": "michael-manno",
+      "record": "2-2"
+     },
+     "blue": {
+      "name": "Matt Semelsberger",
+      "nickname": null,
+      "slug": "matt-semelsberger",
+      "record": "0-0"
+     }
+    },
+    {
+     "order": 4,
+     "slot": "",
+     "weight_class": "Bantamweight",
+     "title": 0,
+     "red": {
+      "name": "Julian Valencia",
+      "nickname": null,
+      "slug": "julian-valencia",
+      "record": "0-2"
+     },
+     "blue": {
+      "name": "Benjamin Moser",
+      "nickname": null,
+      "slug": "benjamin-moser",
+      "record": "5-1"
+     }
+    },
+    {
+     "order": 5,
+     "slot": "",
+     "weight_class": "Heavyweight",
+     "title": 0,
+     "red": {
+      "name": "Nelson Best",
+      "nickname": null,
+      "slug": "nelson-best",
+      "record": "4-0"
+     },
+     "blue": {
+      "name": "Pat Carroll",
+      "nickname": null,
+      "slug": "pat-carroll",
+      "record": "2-0"
+     }
+    },
+    {
+     "order": 6,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Stevo Morris",
+      "nickname": "The Blessed",
+      "slug": "stevo-morris",
+      "record": "3-3"
+     },
+     "blue": {
+      "name": "Elijah Harris",
+      "nickname": "Buffalo Soldier",
+      "slug": "elijah-harris",
+      "record": "2-3"
+     }
+    },
+    {
+     "order": 7,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Eduardo Peralta",
+      "nickname": null,
+      "slug": "eduardo-peralta",
+      "record": "2-4"
+     },
+     "blue": {
+      "name": "Jay Haas",
+      "nickname": null,
+      "slug": "jay-haas",
+      "record": "0-1"
+     }
+    },
+    {
+     "order": 8,
+     "slot": "",
+     "weight_class": "Bantamweight",
+     "title": 0,
+     "red": {
+      "name": "Blaine Shutt",
+      "nickname": null,
+      "slug": "blaine-shutt",
+      "record": "8-6"
+     },
+     "blue": {
+      "name": "Hunter Starner",
+      "nickname": null,
+      "slug": "hunter-starner",
+      "record": "3-3"
+     }
+    },
+    {
+     "order": 9,
+     "slot": "",
+     "weight_class": "Cruiserweight",
+     "title": 0,
+     "red": {
+      "name": "Mike Liberto",
+      "nickname": "Bethlehem Brawler",
+      "slug": "mike-liberto",
+      "record": "1-0"
+     },
+     "blue": {
+      "name": "Lex Ludlow",
+      "nickname": "The Grizzly Bear",
+      "slug": "lex-ludlow",
+      "record": "4-1"
+     }
+    },
+    {
+     "order": 10,
+     "slot": "",
+     "weight_class": "Lightweight",
+     "title": 0,
+     "red": {
+      "name": "Zachary Shingara",
+      "nickname": null,
+      "slug": "zachary-shingara",
+      "record": "0-0"
+     },
+     "blue": {
+      "name": "Zach Pannell",
+      "nickname": "Lil Mac",
+      "slug": "zach-pannell",
+      "record": "1-6"
+     }
+    },
+    {
+     "order": 10,
+     "slot": "",
+     "weight_class": "Bantamweight",
+     "title": 0,
+     "red": {
+      "name": "Malcolm Schuyler",
+      "nickname": null,
+      "slug": "malcolm-schuyler",
+      "record": "1-1"
+     },
+     "blue": {
+      "name": "Tim Yanc",
+      "nickname": null,
+      "slug": "tim-yanc",
+      "record": "0-0"
+     }
+    },
+    {
+     "order": 11,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Fabricio Berrun",
+      "nickname": null,
+      "slug": "fabricio-berrun",
+      "record": "0-0"
+     },
+     "blue": {
+      "name": "Colin Reeser",
+      "nickname": "Cpat",
+      "slug": "colin-reeser",
+      "record": "0-1"
+     }
+    },
+    {
+     "order": 12,
+     "slot": "",
+     "weight_class": "Heavyweight",
+     "title": 0,
+     "red": {
+      "name": "Dale Reed",
+      "nickname": null,
+      "slug": "dale-reed",
+      "record": "0-0"
+     },
+     "blue": {
+      "name": "Brian Newman",
+      "nickname": "Juice",
+      "slug": "brian-newman",
+      "record": "1-0"
+     }
+    }
+   ]
+  },
+  {
+   "cito_slug": "bkfc-hollywood-3",
+   "name": "BKFC 97 Hollywood: Henry vs Collard",
+   "date": "2026-12-11",
+   "time": "7:00 PM America/New_York",
+   "venue": "Hard Rock Live",
+   "city": "Hollywood, FL",
+   "bouts": [
+    {
+     "order": 1,
+     "slot": "Main event",
+     "weight_class": "Welterweight",
+     "title": 0,
+     "red": {
+      "name": "Clay Collard",
+      "nickname": "Cassius",
+      "slug": "clay-collard",
+      "record": null
+     },
+     "blue": {
+      "name": "Bryce Henry",
+      "nickname": "Baba Yaga",
+      "slug": "bryce-henry",
+      "record": null
+     }
+    },
+    {
+     "order": 2,
+     "slot": "Co-main",
+     "weight_class": "Welterweight",
+     "title": 0,
+     "red": {
+      "name": "Joe Elmore",
+      "nickname": "Hitman",
+      "slug": "joe-elmore",
+      "record": null
+     },
+     "blue": {
+      "name": "Gorjan Slaveski",
+      "nickname": "Gogo",
+      "slug": "gorjan-gogo-slaveski",
+      "record": null
+     }
+    },
+    {
+     "order": 3,
+     "slot": "Featured",
+     "weight_class": "Women Flyweight",
+     "title": 0,
+     "red": {
+      "name": "Desiree Yanez",
+      "nickname": null,
+      "slug": "desiree-yanez",
+      "record": null
+     },
+     "blue": {
+      "name": "Jessica Eye",
+      "nickname": "Evil",
+      "slug": "jessica-eye",
+      "record": null
+     }
+    },
+    {
+     "order": 4,
+     "slot": "",
+     "weight_class": "Middleweight",
+     "title": 0,
+     "red": {
+      "name": "Zeb Vincent",
+      "nickname": "Cwb",
+      "slug": "zeb-vincent",
+      "record": null
+     },
+     "blue": {
+      "name": "Francesco Ricchi",
+      "nickname": null,
+      "slug": "francesco-ricchi",
+      "record": null
+     }
+    },
+    {
+     "order": 5,
+     "slot": "",
+     "weight_class": "Ironweight",
+     "title": 0,
+     "red": {
+      "name": "Alex Davis",
+      "nickname": "The Rhino",
+      "slug": "alex-davis",
+      "record": null
+     },
+     "blue": {
+      "name": "Brandon Alfano",
+      "nickname": "Rhino",
+      "slug": "brandon-alfano",
+      "record": null
+     }
+    },
+    {
+     "order": 6,
+     "slot": "",
+     "weight_class": "Welterweight",
+     "title": 0,
+     "red": {
+      "name": "Israel Rodriguez",
+      "nickname": "El Rooster",
+      "slug": "israel-rodriguez",
+      "record": null
+     },
+     "blue": {
+      "name": "Murat Kazgan",
+      "nickname": "Lord Pitbull",
+      "slug": "murat-kazgan",
+      "record": null
+     }
+    },
+    {
+     "order": 7,
+     "slot": "",
+     "weight_class": "Lightweight",
+     "title": 0,
+     "red": {
+      "name": "Elvin Brito",
+      "nickname": "El Bandito",
+      "slug": "elvin-brito",
+      "record": null
+     },
+     "blue": {
+      "name": "Howard Davis",
+      "nickname": "Hd",
+      "slug": "howard-davis",
+      "record": null
+     }
+    },
+    {
+     "order": 8,
+     "slot": "",
+     "weight_class": "Middleweight",
+     "title": 0,
+     "red": {
+      "name": "Justin Walters",
+      "nickname": "Sexy",
+      "slug": "justi-walters",
+      "record": null
+     },
+     "blue": {
+      "name": "Leo Acanda",
+      "nickname": "Block",
+      "slug": "leo-acanda",
+      "record": null
+     }
+    }
+   ]
+  },
+  {
+   "cito_slug": "bkfsea-bruise-cruise",
+   "name": "BKFSEA Bruise Cruise: Stewart vs Duran",
+   "date": "2027-01-23",
+   "time": "9:00 PM America/Nassau",
+   "venue": "Norwegian Jewel",
+   "city": "Bahamas (cruise)",
+   "bouts": [
+    {
+     "order": 1,
+     "slot": "Main event",
+     "weight_class": "Featherweight",
+     "title": 1,
+     "red": {
+      "name": "Bryan Duran",
+      "nickname": "El Gallo",
+      "slug": "bryan-duran",
+      "record": null
+     },
+     "blue": {
+      "name": "Kai Stewart",
+      "nickname": "King",
+      "slug": "kai-stewart",
+      "record": null
+     }
+    },
+    {
+     "order": 2,
+     "slot": "Co-main",
+     "weight_class": "Welterweight",
+     "title": 0,
+     "red": {
+      "name": "Josh Kuhne",
+      "nickname": "Kamikaze",
+      "slug": "josh-kuhne",
+      "record": null
+     },
+     "blue": {
+      "name": "George Thorpe",
+      "nickname": "Gorgeous",
+      "slug": "george-thorpe",
+      "record": null
+     }
+    },
+    {
+     "order": 3,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Brandon Meneses",
+      "nickname": "The Voodo Child",
+      "slug": "brandon-meneses",
+      "record": null
+     },
+     "blue": {
+      "name": "Nathan Rivera",
+      "nickname": "The Reaper",
+      "slug": "nathan-rivera",
+      "record": null
+     }
+    },
+    {
+     "order": 4,
+     "slot": "",
+     "weight_class": "Ironweight",
+     "title": 0,
+     "red": {
+      "name": "Gabriel Mota",
+      "nickname": "Mano De Piedra",
+      "slug": "gabriel-mota",
+      "record": null
+     },
+     "blue": {
+      "name": "Julio Perez Rodriguez",
+      "nickname": "The Cuban Horse",
+      "slug": "julio-perez-rodriguez",
+      "record": null
+     }
+    },
+    {
+     "order": 5,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Mick Whitehead",
+      "nickname": "Warhorse",
+      "slug": "mick-whitehead",
+      "record": null
+     },
+     "blue": {
+      "name": "Ramiro Figueroa",
+      "nickname": null,
+      "slug": "ramiro-figueroa",
+      "record": null
+     }
+    },
+    {
+     "order": 6,
+     "slot": "",
+     "weight_class": "Lightweight",
+     "title": 0,
+     "red": {
+      "name": "Josh Marer",
+      "nickname": "Danger",
+      "slug": "josh-marer",
+      "record": null
+     },
+     "blue": {
+      "name": "Famez",
+      "nickname": "Famez",
+      "slug": "famez",
+      "record": null
+     }
+    },
+    {
+     "order": 7,
+     "slot": "",
+     "weight_class": "Featherweight",
+     "title": 0,
+     "red": {
+      "name": "Matt Denning",
+      "nickname": null,
+      "slug": "matt-denning",
+      "record": null
+     },
+     "blue": {
+      "name": "Joey Gambino",
+      "nickname": "The Raging Warrior",
+      "slug": "joey-gambino",
+      "record": null
+     }
+    },
+    {
+     "order": 8,
+     "slot": "",
+     "weight_class": "Lightweight",
+     "title": 0,
+     "red": {
+      "name": "Amos Collins",
+      "nickname": "Titanium Warrior",
+      "slug": "amos-collins",
+      "record": null
+     },
+     "blue": {
+      "name": "Cole Ferrell",
+      "nickname": null,
+      "slug": "cole-ferrell",
+      "record": null
+     }
+    }
+   ]
+  }
+ ]
+}
