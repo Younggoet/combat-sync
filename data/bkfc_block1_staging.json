@@ -1,0 +1,21 @@
+{"block":"BKFC Block 1 (staging, not loaded)","gathered":"2026-11-24","status":"unverified web data; William approves before load",
+"events":[
+{"name":"BKFC Fight Night Hershey: Pague vs Richman","date":"2026-12-04","venue":"Giant Center","city":"Hershey, PA","bouts_total":13,"source":"ufcalendar.com, fightmag.com, bkfc.com/events",
+ "bouts":[
+ ["Main event","Middleweight",5,"Dustin Pague","6-2","Mike Richman","8-4"],
+ ["Co-main","Ironweight",5,"Sam Alvey","34-18-1","Jonathan Miller","2-3"],
+ ["","Bantamweight",5,"Benjamin Moser","5-1","Julian Valencia","0-2"],
+ ["","Middleweight",5,"Matt Semelsberger","0-0","Michael Manno","2-2"],
+ ["","Heavyweight",5,"Pat Carroll","2-0","Nelson Best","4-0"],
+ ["","Featherweight",5,"Elijah Harris","2-3","Stevo Morris","3-3"],
+ ["","Featherweight",5,"Jay Haas","0-1","Eduardo Peralta","2-4"],
+ ["","Bantamweight",5,"Hunter Starner","3-3","Blaine Shutt","8-6"],
+ ["","Cruiserweight",5,"Lex Ludlow","4-1","Mike Liberto","1-0"],
+ ["","Bantamweight",5,"Tim Yanc","0-0","Malcolm Schuyler","1-1"],
+ ["","Lightweight",5,"Zachary Pannell","1-6","Zachary Shingara","0-0"],
+ ["","Featherweight",5,"Colin Reeser","0-1","Fabricio Berrun","0-0"],
+ ["","Heavyweight",5,"Brian Newman","1-0","Dale Reed","0-0"]]},
+{"name":"BKFC 97 Hollywood: Henry vs Collard","date":"2026-12-11","venue":"Hard Rock Live, Seminole Hard Rock","city":"Hollywood, FL","bouts_total":null,"source":"bkfc.com/events, mmasucka.com",
+ "bouts":[["Main event","Welterweight",5,"Bryce Henry","","Clay Collard",""],["Featured","Women's flyweight",5,"Jessica Eye","","Desiree Yanez",""]]},
+{"name":"BKFC Bruise Cruise: Stewart vs Duran","date":"2027-01-23","venue":"Norwegian Jewel","city":"Bahamas (cruise)","bouts_total":null,"source":"bkfc.com/events",
+ "bouts":[["Main event","",5,"Kai Stewart","","Bryan Duran",""]]}]}
