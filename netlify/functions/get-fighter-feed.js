@@ -164,13 +164,14 @@ exports.handler = async (event) => {
       .or(`fighter_a.eq.${id},fighter_b.eq.${id}`).not('status', 'in', '(completed,cancelled)').gte('bout_date', today)
       .order('bout_date', { ascending: true }).limit(1);
     const bout = (bouts || [])[0];
-    if (bout && !hasWritten) {
+    if (bout) {
       const oid = bout.fighter_a === id ? bout.fighter_b : bout.fighter_a;
       const { data: fs } = await supabase.from('fighters').select('*').in('id', [id, oid]);
       const f = (fs || []).find((x) => x.id === id), opp = (fs || []).find((x) => x.id === oid);
       if (f && opp) {
         previews = buildPreviews(f, opp, bout);
-        if ((sum.data || []).some((s) => s.kind === 'NEXT FIGHT')) previews = previews.filter((p) => p.id !== 'gen-preview');
+        // The hand-written preview replaces only the generic fight-preview card; Style and Fantasy stays.
+        if (hasWritten) previews = previews.filter((p) => p.id !== 'gen-preview');
       }
     }
   } catch (e) { /* previews are best-effort */ }
