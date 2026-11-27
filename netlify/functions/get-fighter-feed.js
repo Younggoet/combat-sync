@@ -68,20 +68,47 @@ function buildPreviews(f, opp, bout) {
     id: 'gen-preview', kind: 'FIGHT PREVIEW', generated: true,
     headline: `${nm} vs ${on}${when ? ', ' + when : ''}`,
     body: [lead].concat(details).join(' '),
-    take: fin != null ? `${nm} has finished ${fin}% of ${fw(f)} pro wins, which is where bonus points come from.${finPct(opp) != null ? ` ${on} has finished ${finPct(opp)}% of ${fw(opp)}.` : ''}` : null,
+    take: fin != null ? `${nm} has finished ${fin}% of ${fw(f)} pro wins${finPct(opp) != null ? ` and ${on} has finished ${finPct(opp)}% of ${fw(opp)}` : ''}. ${(fin >= 60 || (finPct(opp) || 0) >= 60) ? 'With finishers on one or both sides this can end early, and an early finish is where the big fantasy nights come from.' : 'Neither is a heavy finisher, so expect this to be scored on volume and control more than on a single big moment.'}` : null,
     sources: [],
   });
 
-  // 2. Style and fantasy angle
-  const mine = styleLine(f), theirs = styleLine(opp);
-  if (mine.length) {
-    let body = `${nm} ${mine.join(', ')}.`;
-    if (theirs.length) body += ` ${on} ${theirs.join(', ')}.`;
-    const tdd = num(f.td_def_pct), otd = num(opp.avg_takedowns);
-    let take = null;
-    if (otd != null && otd >= 1 && tdd != null) take = `${on} averages ${otd.toFixed(1)} takedowns and ${nm} stops ${Math.round(tdd * (tdd <= 1 ? 100 : 1))}% of them, so takedown defense points are in play.`;
-    else if (num(f.avg_sig_strikes) != null && num(opp.avg_sig_strikes) != null) take = num(f.avg_sig_strikes) >= num(opp.avg_sig_strikes) ? `${nm} projects for more strike volume in this matchup.` : `${on} projects for more strike volume, so ${nm} points lean on finishes and control.`;
-    out.push({ id: 'gen-style', kind: 'STYLE AND FANTASY', generated: true, headline: `How ${nm} scores against ${on}`, body, take, sources: [] });
+  // 2. Style and fantasy: how this fight can score, built from both fighters' numbers.
+  const proj = (x) => {
+    const g = (k) => num(x[k]) || 0;
+    return { sig: g('avg_sig_strikes') * 0.1, td: g('avg_takedowns') * 2, kd: g('avg_knockdowns') * 8, ctl: g('avg_control_seconds') / 60, sub: g('avg_sub_attempts'), rev: g('avg_reversals') * 6 };
+  };
+  const tot = (p) => p.sig + p.td + p.kd + p.ctl + p.sub + p.rev;
+  const hasStats = (x) => num(x.avg_sig_strikes) != null;
+  if (hasStats(f) && hasStats(opp)) {
+    const pf = proj(f), po = proj(opp), tf = tot(pf), to = tot(po);
+    const r1 = (v) => (Math.round(v * 10) / 10).toString();
+    const paras = [];
+    paras.push(`Before any finish bonus, the numbers project ${nm} at ${r1(tf)} points and ${on} at ${r1(to)}.`);
+    const finF = finPct(f), finO = finPct(opp);
+    const kdF = num(f.avg_knockdowns) || 0, kdO = num(opp.avg_knockdowns) || 0;
+    // Short-night path
+    if ((finF != null && finF >= 50) || (finO != null && finO >= 50) || kdF >= 0.4 || kdO >= 0.4) {
+      const desc = (x) => { const kd = num(x.avg_knockdowns) || 0, fp = finPct(x); const bits = []; if (kd >= 0.3) bits.push(`averages ${kd.toFixed(1)} knockdowns`); if (fp != null) bits.push(`has finished ${fp}% of ${fw(x)} pro wins`); return bits.length ? `${last(x.full_name)} ${bits.join(' and ')}` : null; };
+      const parts = (kdF >= kdO ? [f, opp] : [opp, f]).map(desc).filter(Boolean);
+      paras.push(`Short-night path: ${parts.join('; ')}. A single knockdown is worth 8 points, the same as 80 significant strikes, and a finish adds 10 more in leagues with the bonus. If either one lands early, the points come in one burst and the fight can end before volume matters.`);
+    }
+    // Distance / volume path
+    const vf = num(f.avg_sig_strikes), vo = num(opp.avg_sig_strikes), hi = vf >= vo ? f : opp, lo = vf >= vo ? opp : f;
+    const rd = bout.scheduled_rounds || 3;
+    paras.push(`Distance path: ${last(hi.full_name)} lands ${Math.max(vf, vo).toFixed(1)} significant strikes per fight to ${Math.min(vf, vo).toFixed(1)} for ${last(lo.full_name)}${rd >= 5 ? `, and five rounds give that volume more time to stack` : ''}. Volume only pays 0.1 per strike, so it decides the fight on points only when nobody lands the big shot.`);
+    // Grappling path
+    const tdF = num(f.avg_takedowns) || 0, tdO = num(opp.avg_takedowns) || 0;
+    if (Math.max(tdF, tdO) >= 1) {
+      const w = tdF >= tdO ? f : opp, v = tdF >= tdO ? opp : f, wn = last(w.full_name), vn = last(v.full_name);
+      const tdd = num(v.td_def_pct), cs = (num(w.avg_control_seconds) || 0) / 60;
+      paras.push(`Wrestling path: ${wn} averages ${Math.max(tdF, tdO).toFixed(1)} takedowns, worth ${r1(Math.max(tdF, tdO) * 2)} points a fight${cs >= 1 ? `, plus ${r1(cs)} minutes of control` : ''}.${tdd != null ? ` ${vn} stops ${Math.round(tdd * (tdd <= 1 ? 100 : 1))}% of takedowns, so every one that gets through is a swing in ${wn}'s favor.` : ''}`);
+    }
+    // Where it could run away
+    const lead = tf >= to ? f : opp, trail = tf >= to ? opp : f, gap = Math.max(tf, to) - Math.min(tf, to);
+    let take;
+    if (Math.min(tf, to) > 0 && Math.max(tf, to) / Math.min(tf, to) >= 1.25) take = `This matchup leans toward ${last(lead.full_name)}. If ${last(trail.full_name)} can't match the pace early, ${last(lead.full_name)} is the one who piles up points, with a ${r1(gap)}-point projected gap before any finish.`;
+    else take = `This projects almost even, ${r1(Math.max(tf, to))} to ${r1(Math.min(tf, to))}, so it will come down to who lands first. Whoever gets the early knockdown or takedown can turn an even projection into a big scoring night, and the other fighter will be playing catch-up.`;
+    out.push({ id: 'gen-style', kind: 'STYLE AND FANTASY', generated: true, headline: `How ${nm} and ${on} can score`, body: paras.join(' '), take, sources: [] });
   }
   return out;
 }
