@@ -5,6 +5,8 @@
 // outlet news-sync stores, mixed so no single source floods the list.
 
 const { createClient } = require('@supabase/supabase-js');
+// Hand-written fight previews, keyed by fighter id (refreshed by Claude).
+const WRITTEN = require('./data/fighter-previews.json');
 
 const CORS = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' };
 const MAX_COVERAGE = 12;
@@ -152,6 +154,9 @@ exports.handler = async (event) => {
 
   // Previews for the next scheduled bout (skipped if a published NEXT FIGHT exists).
   let previews = [];
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const wr = WRITTEN[id];
+  const hasWritten = !!(wr && wr.date >= todayIso) || (sum.data || []).some((x) => x.kind === 'NEXT FIGHT' || x.kind === 'FIGHT PREVIEW');
   try {
     const today = new Date().toISOString().slice(0, 10);
     const { data: bouts } = await supabase.from('bouts')
@@ -159,7 +164,7 @@ exports.handler = async (event) => {
       .or(`fighter_a.eq.${id},fighter_b.eq.${id}`).not('status', 'in', '(completed,cancelled)').gte('bout_date', today)
       .order('bout_date', { ascending: true }).limit(1);
     const bout = (bouts || [])[0];
-    if (bout) {
+    if (bout && !hasWritten) {
       const oid = bout.fighter_a === id ? bout.fighter_b : bout.fighter_a;
       const { data: fs } = await supabase.from('fighters').select('*').in('id', [id, oid]);
       const f = (fs || []).find((x) => x.id === id), opp = (fs || []).find((x) => x.id === oid);
@@ -170,8 +175,12 @@ exports.handler = async (event) => {
     }
   } catch (e) { /* previews are best-effort */ }
 
+  const written = wr && wr.date >= todayIso
+    ? [{ id: 'written-preview', kind: 'FIGHT PREVIEW', headline: wr.headline, body: wr.body, take: wr.take, sources: [] }]
+    : [];
+
   return {
     statusCode: 200, headers: CORS,
-    body: JSON.stringify({ summaries: (sum.data || []).concat(previews), coverage: mixed }),
+    body: JSON.stringify({ summaries: (sum.data || []).concat(written, previews), coverage: mixed }),
   };
 };
