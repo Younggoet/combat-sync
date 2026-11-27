@@ -24,6 +24,7 @@ const norm = (t) => decode(t).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 const num = (v) => (v == null || v === '' || isNaN(Number(v)) ? null : Number(v));
 const inches = (cm) => { const t = Math.round(cm / 2.54); return `${Math.floor(t / 12)}'${t % 12}"`; };
 const ageOf = (f) => (f.date_of_birth ? Math.floor((Date.now() - new Date(f.date_of_birth).getTime()) / 31557600000) : num(f.age_years));
+const fw = (f) => ((f.finishes > f.wins && f.pro_wins >= f.finishes) ? f.pro_wins : f.wins);
 const rec = (f) => `${f.wins ?? 0}-${f.losses ?? 0}`;
 const prob = (ml) => { ml = num(ml); if (ml == null) return null; return ml < 0 ? -ml / (-ml + 100) : 100 / (ml + 100); };
 const dateStr = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -45,7 +46,7 @@ function buildPreviews(f, opp, bout) {
   const when = bout.bout_date ? dateStr(bout.bout_date) : null;
   const rounds = bout.scheduled_rounds ? `${bout.scheduled_rounds}-round ` : '';
   const wc = bout.weight_class || f.announced_weight_class || '';
-  const fin = f.wins ? Math.round(((f.finishes || 0) / f.wins) * 100) : null;
+  const fin = fw(f) ? Math.min(100, Math.round(((f.finishes || 0) / fw(f)) * 100)) : null;
   const pa = prob(bout.fighter_a_moneyline), pb = prob(bout.fighter_b_moneyline);
   const isA = bout.fighter_a === f.id;
   let odds = null;
@@ -66,7 +67,7 @@ function buildPreviews(f, opp, bout) {
     id: 'gen-preview', kind: 'FIGHT PREVIEW', generated: true,
     headline: `${nm} vs ${on}${when ? ', ' + when : ''}`,
     body: [lead].concat(details).join(' '),
-    take: fin != null ? `${nm} has finished ${fin}% of ${f.wins} wins, which is where bonus points come from. ${num(opp.wins) ? `${on} has finished ${Math.round(((opp.finishes || 0) / opp.wins) * 100)}% of ${opp.wins}.` : ''}` : null,
+    take: fin != null ? `${nm} has finished ${fin}% of ${fw(f)} wins, which is where bonus points come from. ${fw(opp) ? `${on} has finished ${Math.min(100, Math.round(((opp.finishes || 0) / fw(opp)) * 100))}% of ${fw(opp)}.` : ''}` : null,
     sources: [],
   });
 
