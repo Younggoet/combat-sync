@@ -172,12 +172,14 @@ exports.handler = async (event) => {
         previews = buildPreviews(f, opp, bout);
         // The hand-written preview replaces only the generic fight-preview card; Style and Fantasy stays.
         if (hasWritten) previews = previews.filter((p) => p.id !== 'gen-preview');
+        if (wr && wr.style && wr.date >= todayIso) previews = previews.filter((p) => p.id !== 'gen-style');
       }
     }
   } catch (e) { /* previews are best-effort */ }
 
   const written = wr && wr.date >= todayIso
     ? [{ id: 'written-preview', kind: 'FIGHT PREVIEW', headline: wr.headline, body: wr.body, take: wr.take, sources: [] }]
+        .concat(wr.style ? [{ id: 'written-style', kind: 'STYLE AND FANTASY', headline: wr.style.headline, body: wr.style.body, take: wr.style.take, sources: [] }] : [])
     : [];
 
   return {
